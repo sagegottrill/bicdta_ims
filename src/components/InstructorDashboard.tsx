@@ -6,18 +6,28 @@ import { useAppContext } from '@/contexts/AppContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Users, LogOut, BarChart3, Download, Megaphone, Globe, Plus } from 'lucide-react';
 import TraineeForm from './forms/TraineeForm';
+import ExportModal from './ExportModal';
 
 const InstructorDashboard: React.FC = () => {
   const { currentUser, logout, trainees, loading } = useAppContext();
   const { t, language, setLanguage } = useLanguage();
   const [showTraineeForm, setShowTraineeForm] = useState(false);
   const [announcement, setAnnouncement] = useState('');
-  const [announcements, setAnnouncements] = useState<string[]>([]);
+  const [announcements, setAnnouncements] = useState<string[]>([
+    "Welcome to BICTDA Information Management System! All instructors are required to attend the training session on Friday.",
+    "New trainees enrollment is now open for Cohort 4. Please ensure all documentation is complete.",
+    "Monthly progress reports are due by the end of this week. Please submit your center's data."
+  ]);
+  const [selectedCentre, setSelectedCentre] = useState<string>('all');
+  const [selectedCohort, setSelectedCohort] = useState<string>('all');
 
   // Debug logging
   console.log('🎯 InstructorDashboard - trainees count:', trainees.length);
   console.log('🎯 InstructorDashboard - loading:', loading);
   console.log('🎯 InstructorDashboard - first trainee:', trainees[0]);
+  console.log('🎯 InstructorDashboard - all trainees:', trainees);
+  console.log('🎯 InstructorDashboard - trainees type:', typeof trainees);
+  console.log('🎯 InstructorDashboard - trainees is array:', Array.isArray(trainees));
   
   // Debug gender values
   const genderValues = [...new Set(trainees.map(t => t.gender))];
@@ -62,16 +72,38 @@ const InstructorDashboard: React.FC = () => {
   console.log('🎯 Gender Stats Counts:', genderStats.map(gs => `${gs.label}: ${gs.count}`));
   
   const centreStats = trainees.reduce((acc, trainee) => {
-    const centreName = trainee.centre_name || 'Unknown Centre';
+    const centreName = trainee.centre_name?.toUpperCase() || 'UNKNOWN CENTRE';
     acc[centreName] = (acc[centreName] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
   const cohortStats = trainees.reduce((acc, trainee) => {
     const cohortNum = trainee.cohort_number || 0;
-    acc[cohortNum.toString()] = (acc[cohortNum.toString()] || 0) + 1;
+    if (cohortNum > 0) { // Only count valid cohorts (1, 2, 3)
+      acc[cohortNum.toString()] = (acc[cohortNum.toString()] || 0) + 1;
+    }
     return acc;
   }, {} as Record<string, number>);
+
+  // Filtered trainees based on selected filters
+  const filteredTrainees = trainees.filter(trainee => {
+    const centreMatch = selectedCentre === 'all' || trainee.centre_name?.toUpperCase() === selectedCentre;
+    const cohortMatch = selectedCohort === 'all' || trainee.cohort_number.toString() === selectedCohort;
+    return centreMatch && cohortMatch;
+  });
+
+  // Get unique centres and cohorts for filter dropdowns
+  const uniqueCentres = [
+    "IKWA DIGITAL LITERACY CENTRE",
+    "GAJIRAM ICT CENTER", 
+    "GUBIO DIGITAL LITERACY CENTRE",
+    "KAGA DIGITAL LITERACY CENTRE",
+    "MONGUNO DIGITAL LITERACY CENTRE",
+    "MAFA DIGITAL LITERACY CENTRE",
+    "DAMASAK DIGITAL LITERACY CENTER",
+    "BAYO DIGITAL LITERACY CENTER"
+  ];
+  const uniqueCohorts = [...new Set(trainees.map(t => t.cohort_number?.toString() || ''))].filter(cohort => cohort && cohort !== '0').sort();
 
   // Attendance (simple toggle for demo)
   const [attendance, setAttendance] = useState<{ [traineeId: string]: boolean }>({});
@@ -85,17 +117,17 @@ const InstructorDashboard: React.FC = () => {
     }
   };
 
-  // Downloadable report (CSV)
-  const downloadCSV = () => {
+  // Export filtered data (CSV)
+  const exportData = () => {
     const csv = [
       ['Full Name', 'Gender', 'Age', 'Educational Background', 'Employment Status', 'Centre Name', 'Cohort Number', 'ID Number', 'Address', 'Learner Category'],
-      ...trainees.map(t => [
+      ...filteredTrainees.map(t => [
         t.full_name, 
         t.gender, 
         t.age, 
         t.educational_background, 
         t.employment_status, 
-        t.centre_name, 
+        t.centre_name?.toUpperCase(), 
         t.cohort_number, 
         t.id_number, 
         t.address, 
@@ -106,7 +138,14 @@ const InstructorDashboard: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'trainees_report.csv';
+    
+    // Create filename with filter info
+    let filename = 'trainees_export';
+    if (selectedCentre !== 'all') filename += `_${selectedCentre.replace(/\s+/g, '_')}`;
+    if (selectedCohort !== 'all') filename += `_cohort_${selectedCohort}`;
+    filename += '.csv';
+    
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -211,7 +250,7 @@ const InstructorDashboard: React.FC = () => {
           </Card>
         </div>
 
-        {/* Announcements */}
+        {/* Announcements - Read Only */}
         <Card className="mb-8 border-slate-200 shadow-lg">
           <CardHeader className="flex flex-row items-center gap-4">
             <div className="w-10 h-10 bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl flex items-center justify-center">
@@ -220,27 +259,19 @@ const InstructorDashboard: React.FC = () => {
             <CardTitle className="text-slate-800">Announcements</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex gap-3 mb-4">
-              <input
-                type="text"
-                value={announcement}
-                onChange={e => setAnnouncement(e.target.value)}
-                placeholder="Type announcement..."
-                className="flex-1 border border-slate-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-              <Button 
-                onClick={handleAnnounce} 
-                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6"
-              >
-                Send
-              </Button>
-            </div>
             <div className="space-y-3">
-              {announcements.map((a, i) => (
-                <div key={i} className="bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-400 p-4 rounded-lg text-slate-800">
-                  {a}
-                </div>
-              ))}
+              {announcements.length > 0 ? (
+                announcements.map((a, i) => (
+                  <div key={i} className="bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-400 p-4 rounded-lg text-slate-800">
+                    {a}
+                  </div>
+                ))
+              ) : (
+                                 <div className="text-center py-8 text-slate-500">
+                   <Megaphone className="w-8 h-8 mx-auto mb-2 text-slate-400" />
+                   <p>No new announcements from admin</p>
+                 </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -248,8 +279,8 @@ const InstructorDashboard: React.FC = () => {
         {/* Trainee Management */}
         <div className="bg-white rounded-2xl shadow-lg border border-slate-200/50 overflow-hidden mb-8">
           <div className="p-6 border-b border-slate-200">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold text-slate-800">All Trainees</h2>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-slate-800">Trainees ({filteredTrainees.length})</h2>
               <div className="flex gap-3">
                 <Button 
                   onClick={() => setShowTraineeForm(true)} 
@@ -258,14 +289,51 @@ const InstructorDashboard: React.FC = () => {
                   <Plus className="w-4 h-4 mr-2" />
                   {t('add')} Trainee
                 </Button>
-                <Button 
-                  onClick={downloadCSV} 
-                  variant="outline" 
-                  className="border-slate-300 text-slate-700 hover:bg-slate-50"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Download CSV
-                </Button>
+                                 <ExportModal 
+                   trainees={filteredTrainees}
+                   trigger={
+                     <Button 
+                       variant="outline" 
+                       className="border-slate-300 text-slate-700 hover:bg-slate-50"
+                     >
+                       <Download className="w-4 h-4 mr-2" />
+                       Export Data
+                     </Button>
+                   }
+                 />
+              </div>
+            </div>
+            
+            {/* Filter Controls */}
+            <div className="flex gap-4 items-center">
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-slate-700">Centre:</label>
+                <Select value={selectedCentre} onValueChange={setSelectedCentre}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="Select Centre" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Centres</SelectItem>
+                    {uniqueCentres.map(centre => (
+                      <SelectItem key={centre} value={centre}>{centre}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-slate-700">Cohort:</label>
+                <Select value={selectedCohort} onValueChange={setSelectedCohort}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue placeholder="Select Cohort" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Cohorts</SelectItem>
+                    {uniqueCohorts.map(cohort => (
+                      <SelectItem key={cohort} value={cohort}>Cohort {cohort}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>
@@ -273,18 +341,17 @@ const InstructorDashboard: React.FC = () => {
           <div className="overflow-x-auto">
             <table className="min-w-full">
               <thead>
-                <tr className="bg-gradient-to-r from-slate-50 to-blue-50 text-slate-800">
-                  <th className="py-4 px-6 text-left font-semibold">Full Name</th>
-                  <th className="py-4 px-6 text-left font-semibold">Gender</th>
-                  <th className="py-4 px-6 text-left font-semibold">Age</th>
-                  <th className="py-4 px-6 text-left font-semibold">Centre</th>
-                  <th className="py-4 px-6 text-left font-semibold">Cohort</th>
-                  <th className="py-4 px-6 text-left font-semibold">Employment</th>
-                  <th className="py-4 px-6 text-left font-semibold">Attendance</th>
-                </tr>
+                                 <tr className="bg-gradient-to-r from-slate-50 to-blue-50 text-slate-800">
+                   <th className="py-4 px-6 text-left font-semibold">Full Name</th>
+                   <th className="py-4 px-6 text-left font-semibold">Gender</th>
+                   <th className="py-4 px-6 text-left font-semibold">Age</th>
+                   <th className="py-4 px-6 text-left font-semibold">Centre</th>
+                   <th className="py-4 px-6 text-left font-semibold">Cohort</th>
+                   <th className="py-4 px-6 text-left font-semibold">Employment</th>
+                 </tr>
               </thead>
               <tbody>
-                {trainees.map(t => (
+                {filteredTrainees.map(t => (
                   <tr key={t.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
                     <td className="py-4 px-6 font-medium text-slate-800">{t.full_name}</td>
                                          <td className="py-4 px-6 text-slate-600 capitalize">
@@ -293,38 +360,25 @@ const InstructorDashboard: React.FC = () => {
                         t.gender}
                      </td>
                     <td className="py-4 px-6 text-slate-600">{t.age}</td>
-                                         <td className="py-4 px-6 text-slate-600">{t.centre_name}</td>
+                                         <td className="py-4 px-6 text-slate-600">{t.centre_name?.toUpperCase()}</td>
                      <td className="py-4 px-6 text-slate-600">{t.cohort_number}</td>
-                     <td className="py-4 px-6 text-slate-600 capitalize">{t.employment_status}</td>
-                    <td className="py-4 px-6">
-                      <Button 
-                        size="sm" 
-                        variant={attendance[t.id] ? 'default' : 'outline'} 
-                        className={attendance[t.id] 
-                          ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white' 
-                          : 'border-slate-300 text-slate-700 hover:bg-slate-50'
-                        } 
-                        onClick={() => markAttendance(t.id.toString())}
-                      >
-                        {attendance[t.id] ? 'Present' : 'Mark Present'}
-                      </Button>
-                    </td>
+                                          <td className="py-4 px-6 text-slate-600 capitalize">{t.employment_status}</td>
                   </tr>
                 ))}
-                {trainees.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="text-center py-12 text-slate-500">
-                      No trainees found.
-                    </td>
-                  </tr>
-                )}
+                                 {filteredTrainees.length === 0 && (
+                   <tr>
+                     <td colSpan={6} className="text-center py-12 text-slate-500">
+                       No trainees found for selected filters.
+                     </td>
+                   </tr>
+                 )}
               </tbody>
             </table>
           </div>
         </div>
 
         {/* Trainee Form Modal */}
-        {showTraineeForm && <TraineeForm onClose={() => setShowTraineeForm(false)} />}
+        {showTraineeForm && <TraineeForm onClose={() => setShowTraineeForm(false)} availableCentres={uniqueCentres} />}
 
         {/* Centre Stats */}
         <div className="mb-8">
@@ -354,10 +408,15 @@ const InstructorDashboard: React.FC = () => {
           <div className="flex gap-6">
             {genderStats.map(gs => (
               <div key={gs.label} className="flex flex-col items-center bg-white border border-slate-200 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 w-40">
-                <span className="text-lg font-semibold text-slate-800 mb-2">{t(gs.label.toLowerCase())}</span>
+                <span className="text-lg font-semibold text-slate-800 mb-2">{gs.label}</span>
                 <span className="text-3xl font-bold text-blue-600">{gs.count}</span>
               </div>
             ))}
+            {genderStats.length === 0 && (
+              <div className="text-slate-500 col-span-full text-center py-8">
+                No gender data available. Debug: {JSON.stringify(genderStats)}
+              </div>
+            )}
           </div>
         </div>
       </div>

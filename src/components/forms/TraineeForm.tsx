@@ -11,9 +11,10 @@ import { X } from 'lucide-react';
 
 interface TraineeFormProps {
   onClose: () => void;
+  availableCentres?: string[];
 }
 
-const TraineeForm: React.FC<TraineeFormProps> = ({ onClose }) => {
+const TraineeForm: React.FC<TraineeFormProps> = ({ onClose, availableCentres = [] }) => {
   const { addTrainee } = useAppContext();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
@@ -41,8 +42,10 @@ const TraineeForm: React.FC<TraineeFormProps> = ({ onClose }) => {
     try {
       await addTrainee({
         ...formData,
+        centre_name: formData.centre_name?.toUpperCase(),
         age: parseInt(formData.age),
         cohort_number: parseInt(formData.cohort_number) || 1,
+        cohort_id: parseInt(formData.cohort_number) || 1,
       });
       toast({ title: 'Success', description: 'Trainee enrolled successfully!' });
       onClose();
@@ -147,13 +150,16 @@ const TraineeForm: React.FC<TraineeFormProps> = ({ onClose }) => {
 
               <div>
                 <Label htmlFor="centre_name">Centre Name</Label>
-                <Input
-                  id="centre_name"
-                  value={formData.centre_name}
-                  onChange={(e) => handleChange('centre_name', e.target.value)}
-                  placeholder="Enter centre name"
-                  className="mt-1"
-                />
+                <Select value={formData.centre_name} onValueChange={(value) => handleChange('centre_name', value)}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select centre" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableCentres.map(centre => (
+                      <SelectItem key={centre} value={centre}>{centre}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div>
@@ -186,9 +192,9 @@ const TraineeForm: React.FC<TraineeFormProps> = ({ onClose }) => {
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="beginner">Beginner</SelectItem>
-                    <SelectItem value="intermediate">Intermediate</SelectItem>
-                    <SelectItem value="advanced">Advanced</SelectItem>
+                    <SelectItem value="ADULT">ADULT</SelectItem>
+                    <SelectItem value="LGA STAFF">LGA STAFF</SelectItem>
+                    <SelectItem value="OUT OF SCHOOL">OUT OF SCHOOL</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

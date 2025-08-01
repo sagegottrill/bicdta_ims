@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAppContext } from '@/contexts/AppContext';
-import { BarChart3, Users, LogOut, TrendingUp, Download, Edit, Trash2, Brain, Settings } from 'lucide-react';
+import { BarChart3, Users, LogOut, TrendingUp, Download, Edit, Trash2, Brain, Settings, Megaphone } from 'lucide-react';
 import StatsOverview from './admin/StatsOverview';
 import TraineeAnalysis from './admin/TraineeAnalysis';
 import CentreAnalysis from './admin/CentreAnalysis';
@@ -14,6 +14,8 @@ const AdminDashboard: React.FC = () => {
   const { currentUser, logout, trainees, loading } = useAppContext();
   const [activeView, setActiveView] = useState<ActiveView>('overview');
   const [showSettings, setShowSettings] = useState(false);
+  const [announcement, setAnnouncement] = useState('');
+  const [announcements, setAnnouncements] = useState<string[]>([]);
 
   // Notifications
   const centreStats = trainees.reduce((acc, trainee) => {
@@ -45,6 +47,14 @@ const AdminDashboard: React.FC = () => {
   // Placeholder edit/delete handlers
   const handleEdit = (type: string, id: string) => alert(`Edit ${type} ${id}`);
   const handleDelete = (type: string, id: string) => alert(`Delete ${type} ${id}`);
+
+  // Announcements
+  const handleAnnounce = () => {
+    if (announcement.trim()) {
+      setAnnouncements(a => [announcement, ...a]);
+      setAnnouncement('');
+    }
+  };
 
   const menuItems = [
     { id: 'overview' as const, label: 'Overview', icon: BarChart3, description: 'Key metrics and charts', color: 'from-blue-500 to-blue-600' },
@@ -155,6 +165,48 @@ const AdminDashboard: React.FC = () => {
             )}
           </div>
         )}
+
+        {/* Announcements - Admin Only */}
+        <Card className="mb-8 border-slate-200 shadow-lg">
+          <CardHeader className="flex flex-row items-center gap-4">
+            <div className="w-10 h-10 bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl flex items-center justify-center">
+              <Megaphone className="w-5 h-5 text-white" />
+            </div>
+            <CardTitle className="text-slate-800">Send Announcements</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-3 mb-4">
+              <input
+                type="text"
+                value={announcement}
+                onChange={e => setAnnouncement(e.target.value)}
+                placeholder="Type announcement for all instructors..."
+                className="flex-1 border border-slate-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              <Button 
+                onClick={handleAnnounce} 
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6"
+              >
+                Send
+              </Button>
+            </div>
+            <div className="space-y-3">
+              {announcements.map((a, i) => (
+                <div key={i} className="bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-400 p-4 rounded-lg text-slate-800">
+                  <div className="flex justify-between items-start">
+                    <span>{a}</span>
+                    <span className="text-xs text-slate-500">Sent by Admin</span>
+                  </div>
+                </div>
+              ))}
+              {announcements.length === 0 && (
+                <div className="text-center py-4 text-slate-500">
+                  <p>No announcements sent yet</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Navigation Menu */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

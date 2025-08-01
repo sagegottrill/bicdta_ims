@@ -1,11 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
 import { useAppContext } from '@/contexts/AppContext';
-import { Edit, Trash2 } from 'lucide-react';
+import { Edit, Trash2, Download } from 'lucide-react';
+import ExportModal from '../ExportModal';
 
 const TraineeAnalysis: React.FC<{ handleEdit?: (type: string, id: string) => void, handleDelete?: (type: string, id: string) => void }> = ({ handleEdit, handleDelete }) => {
   const { trainees } = useAppContext();
+  const [selectedCentre, setSelectedCentre] = useState<string>('all');
+  const [selectedCohort, setSelectedCohort] = useState<string>('all');
 
   // Debug values
   const educationValues = [...new Set(trainees.map(t => t.educational_background))];
@@ -37,6 +42,59 @@ const TraineeAnalysis: React.FC<{ handleEdit?: (type: string, id: string) => voi
       return status === 'unemployed' || status === 'unemp';
     }).length },
   ];
+
+  // Get unique centres and cohorts for filter dropdowns
+  const uniqueCentres = [
+    "IKWA DIGITAL LITERACY CENTRE",
+    "GAJIRAM ICT CENTER", 
+    "GUBIO DIGITAL LITERACY CENTRE",
+    "KAGA DIGITAL LITERACY CENTRE",
+    "MONGUNO DIGITAL LITERACY CENTRE",
+    "MAFA DIGITAL LITERACY CENTRE",
+    "DAMASAK DIGITAL LITERACY CENTER",
+    "BAYO DIGITAL LITERACY CENTER"
+  ];
+  const uniqueCohorts = [...new Set(trainees.map(t => t.cohort_number?.toString() || ''))].filter(cohort => cohort && cohort !== '0').sort();
+
+  // Filtered trainees based on selected filters
+  const filteredTrainees = trainees.filter(trainee => {
+    const centreMatch = selectedCentre === 'all' || trainee.centre_name?.toUpperCase() === selectedCentre;
+    const cohortMatch = selectedCohort === 'all' || trainee.cohort_number.toString() === selectedCohort;
+    return centreMatch && cohortMatch;
+  });
+
+  // Export filtered data (CSV)
+  const exportData = () => {
+    const csv = [
+      ['Full Name', 'Gender', 'Age', 'Educational Background', 'Employment Status', 'Centre Name', 'Cohort Number', 'ID Number', 'Address', 'Learner Category'],
+      ...filteredTrainees.map(t => [
+        t.full_name, 
+        t.gender, 
+        t.age, 
+        t.educational_background, 
+        t.employment_status, 
+        t.centre_name?.toUpperCase(), 
+        t.cohort_number, 
+        t.id_number, 
+        t.address, 
+        t.learner_category
+      ]),
+    ].map(row => row.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    
+    // Create filename with filter info
+    let filename = 'trainees_export';
+    if (selectedCentre !== 'all') filename += `_${selectedCentre.replace(/\s+/g, '_')}`;
+    if (selectedCohort !== 'all') filename += `_cohort_${selectedCohort}`;
+    filename += '.csv';
+    
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -74,7 +132,52 @@ const TraineeAnalysis: React.FC<{ handleEdit?: (type: string, id: string) => voi
 
       <Card className="lg:col-span-2 shadow-lg border-0">
         <CardHeader>
-          <CardTitle>All Trainees</CardTitle>
+          <div className="flex justify-between items-center">
+            <CardTitle>All Trainees ({filteredTrainees.length})</CardTitle>
+            <div className="flex gap-4 items-center">
+              <ExportModal 
+                trainees={filteredTrainees}
+                trigger={
+                  <Button 
+                    variant="outline" 
+                    className="border-slate-300 text-slate-700 hover:bg-slate-50"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Export Data
+                  </Button>
+                }
+              />
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-slate-700">Centre:</label>
+                <Select value={selectedCentre} onValueChange={setSelectedCentre}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="Select Centre" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Centres</SelectItem>
+                    {uniqueCentres.map(centre => (
+                      <SelectItem key={centre} value={centre}>{centre}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-slate-700">Cohort:</label>
+                <Select value={selectedCohort} onValueChange={setSelectedCohort}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue placeholder="Select Cohort" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Cohorts</SelectItem>
+                    {uniqueCohorts.map(cohort => (
+                      <SelectItem key={cohort} value={cohort}>Cohort {cohort}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -91,14 +194,14 @@ const TraineeAnalysis: React.FC<{ handleEdit?: (type: string, id: string) => voi
               </TableRow>
             </TableHeader>
             <TableBody>
-              {trainees.map((trainee) => (
+              {filteredTrainees.map((trainee) => (
                 <TableRow key={trainee.id}>
                   <TableCell className="font-medium">{trainee.full_name}</TableCell>
                   <TableCell>{trainee.age}</TableCell>
                   <TableCell className="capitalize">{trainee.gender}</TableCell>
                   <TableCell className="capitalize">{trainee.educational_background}</TableCell>
                   <TableCell className="capitalize">{trainee.employment_status}</TableCell>
-                  <TableCell>{trainee.centre_name}</TableCell>
+                  <TableCell>{trainee.centre_name?.toUpperCase()}</TableCell>
                   <TableCell>{trainee.cohort_number}</TableCell>
                   <TableCell>
                     <button onClick={() => (handleEdit ? handleEdit('trainee', trainee.id.toString()) : alert('Edit trainee ' + trainee.id))} className="inline-flex items-center p-1 text-green-700 hover:bg-green-100 rounded"><Edit className="w-4 h-4" /></button>
@@ -106,10 +209,10 @@ const TraineeAnalysis: React.FC<{ handleEdit?: (type: string, id: string) => voi
                   </TableCell>
                 </TableRow>
               ))}
-              {trainees.length === 0 && (
+              {filteredTrainees.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center py-8 text-gray-500">
-                    No trainees found
+                    No trainees found for selected filters
                   </TableCell>
                 </TableRow>
               )}

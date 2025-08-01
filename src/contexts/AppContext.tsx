@@ -61,6 +61,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Fetch trainees from Supabase
   const fetchTrainees = async () => {
     try {
+      console.log('🔍 TESTING - fetchTrainees function called');
       console.log('🔍 Fetching trainees from Supabase...');
       console.log('🔍 Supabase URL:', (import.meta as any).env.VITE_SUPABASE_URL);
       console.log('🔍 Supabase Key exists:', !!(import.meta as any).env.VITE_SUPABASE_ANON_KEY);
@@ -111,12 +112,47 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         console.log('📋 First trainee keys:', Object.keys(allTrainees[0]));
         console.log('📋 Sample trainees (first 3):', allTrainees.slice(0, 3));
         
-        // Only remove exact duplicates based on ID, not names
+        // Only remove exact duplicates (same ID) - don't remove by name as they might be different people
+        console.log('🔍 STARTING DEDUPLICATION...');
+        
+        // Debug: Show some sample names
+        console.log('🔍 Sample names before deduplication:', allTrainees.slice(0, 5).map(t => `"${t.full_name}"`));
+        
         const uniqueTrainees = allTrainees.filter((trainee, index, self) => {
-          return index === self.findIndex(t => t.id === trainee.id);
+          // Only remove if exact same ID exists earlier in the array
+          const isFirst = index === self.findIndex(t => t.id === trainee.id);
+          if (!isFirst) {
+            console.log('🔍 Removing duplicate ID:', trainee.id, trainee.full_name);
+          }
+          return isFirst;
         });
         
+        console.log('🔍 DEDUPLICATION COMPLETE');
+        console.log('🔍 Sample names after deduplication:', uniqueTrainees.slice(0, 5).map(t => `"${t.full_name}"`));
+        
         console.log('🔍 After deduplication:', uniqueTrainees.length, 'unique trainees');
+        console.log('🔍 Original count:', allTrainees.length);
+        console.log('🔍 Removed duplicates:', allTrainees.length - uniqueTrainees.length);
+        
+        // Check for duplicates by name
+        const nameCounts = allTrainees.reduce((acc, trainee) => {
+          acc[trainee.full_name] = (acc[trainee.full_name] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
+        
+        const duplicates = Object.entries(nameCounts).filter(([name, count]) => (count as number) > 1);
+        console.log('🔍 Duplicates by name:', duplicates);
+        console.log('🔍 Number of duplicate names:', duplicates.length);
+        
+        // Check for duplicates by ID
+        const idCounts = allTrainees.reduce((acc, trainee) => {
+          acc[trainee.id] = (acc[trainee.id] || 0) + 1;
+          return acc;
+        }, {} as Record<number, number>);
+        
+        const duplicateIds = Object.entries(idCounts).filter(([id, count]) => (count as number) > 1);
+        console.log('🔍 Duplicates by ID:', duplicateIds);
+        console.log('🔍 Number of duplicate IDs:', duplicateIds.length);
         console.log('🔍 Setting trainees state with:', uniqueTrainees.length, 'records');
         setTrainees(uniqueTrainees);
         console.log('🔍 State should now have:', uniqueTrainees.length, 'trainees');
