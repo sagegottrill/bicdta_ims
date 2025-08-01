@@ -1,45 +1,20 @@
-import React, { createContext, useContext, useState } from 'react';
-
-interface Centre {
-  id: string;
-  name: string;
-  location: string;
-  capacity: number;
-  computers: number;
-  internetStatus: string;
-  powerSource: string;
-  coordinator: string;
-}
-
-interface Trainer {
-  id: string;
-  name: string;
-  email: string;
-  nin: string;
-  qualifications: string;
-  assignedCentre: string;
-}
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
 
 interface Trainee {
-  id: string;
-  name: string;
-  email: string;
-  age: number;
+  id: number;
+  cohort_id: number | null;
+  full_name: string;
   gender: string;
-  lga: string;
-  education: string;
-  employment: string;
-  assignedCentre: string;
-  course: string;
-  enrollmentDate: string;
-}
-
-interface Course {
-  id: string;
-  title: string;
-  description: string;
-  duration: string;
-  targetAudience: string;
+  date_of_birth: string;
+  age: number;
+  educational_background: string;
+  employment_status: string;
+  address: string | null;
+  id_number: string;
+  centre_name: string;
+  learner_category: string | null;
+  cohort_number: number;
 }
 
 interface AppContextType {
@@ -48,14 +23,10 @@ interface AppContextType {
   currentUser: { role: 'instructor' | 'admin' | null; name: string } | null;
   login: (role: 'instructor' | 'admin', name: string, email?: string) => Promise<boolean>;
   logout: () => void;
-  centres: Centre[];
-  trainers: Trainer[];
   trainees: Trainee[];
-  courses: Course[];
-  addCentre: (centre: Omit<Centre, 'id'>) => Promise<void>;
-  addTrainer: (trainer: Omit<Trainer, 'id'>) => Promise<void>;
+  loading: boolean;
   addTrainee: (trainee: Omit<Trainee, 'id'>) => Promise<void>;
-  addCourse: (course: Omit<Course, 'id'>) => Promise<void>;
+  refreshData: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -68,130 +39,109 @@ export const useAppContext = () => {
   return context;
 };
 
-// Sample data for demonstration
-const sampleCentres: Centre[] = [
-  {
-    id: 'centre1',
-    name: 'BICTDA Main Centre',
-    location: 'Maiduguri',
-    capacity: 50,
-    computers: 25,
-    internetStatus: 'available',
-    powerSource: 'grid',
-    coordinator: 'John Instructor'
-  },
-  {
-    id: 'centre2',
-    name: 'Digital Hub Bama',
-    location: 'Bama',
-    capacity: 30,
-    computers: 15,
-    internetStatus: 'limited',
-    powerSource: 'generator',
-    coordinator: 'Sarah Trainer'
-  },
-  {
-    id: 'centre3',
-    name: 'Tech Centre Gwoza',
-    location: 'Gwoza',
-    capacity: 40,
-    computers: 20,
-    internetStatus: 'available',
-    powerSource: 'grid',
-    coordinator: 'Mike Coordinator'
-  }
-];
-
-const sampleCourses: Course[] = [
-  {
-    id: 'course1',
-    title: 'Basic Computer Skills',
-    description: 'Introduction to computer operations and basic software',
-    duration: '8 weeks',
-    targetAudience: 'Beginners'
-  },
-  {
-    id: 'course2',
-    title: 'Digital Marketing',
-    description: 'Online marketing strategies and social media management',
-    duration: '12 weeks',
-    targetAudience: 'Intermediate'
-  },
-  {
-    id: 'course3',
-    title: 'Web Development',
-    description: 'HTML, CSS, and JavaScript fundamentals',
-    duration: '16 weeks',
-    targetAudience: 'Advanced'
-  },
-  {
-    id: 'course4',
-    title: 'Data Analysis',
-    description: 'Excel, SQL, and basic data visualization',
-    duration: '10 weeks',
-    targetAudience: 'Intermediate'
-  }
-];
-
-const sampleTrainees: Trainee[] = [
-  {
-    id: 'trainee1',
-    name: 'Aisha Mohammed',
-    email: 'aisha.m@email.com',
-    age: 25,
-    gender: 'female',
-    lga: 'Maiduguri',
-    education: 'tertiary',
-    employment: 'unemployed',
-    assignedCentre: 'centre1',
-    course: 'course1',
-    enrollmentDate: '2024-01-15'
-  },
-  {
-    id: 'trainee2',
-    name: 'Ahmed Bello',
-    email: 'ahmed.b@email.com',
-    age: 32,
-    gender: 'male',
-    lga: 'Maiduguri',
-    education: 'secondary',
-    employment: 'employed',
-    assignedCentre: 'centre1',
-    course: 'course2',
-    enrollmentDate: '2024-01-20'
-  }
-  // ... more sample trainees ...
-];
-
-const sampleTrainers: Trainer[] = [
-  {
-    id: 'trainer1',
-    name: 'John Instructor',
-    email: 'john.instructor@bictda.bo.gov.ng',
-    nin: '12345678901',
-    qualifications: 'BSc Computer Science, MSc IT',
-    assignedCentre: 'centre1'
-  },
-  {
-    id: 'trainer2',
-    name: 'Sarah Trainer',
-    email: 'sarah.trainer@bictda.bo.gov.ng',
-    nin: '12345678902',
-    qualifications: 'BSc Education, Digital Skills Certified',
-    assignedCentre: 'centre2'
-  }
-  // ... more sample trainers ...
-];
-
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ role: 'instructor' | 'admin' | null; name: string } | null>(null);
-  const [centres, setCentres] = useState<Centre[]>(sampleCentres);
-  const [trainers, setTrainers] = useState<Trainer[]>(sampleTrainers);
-  const [trainees, setTrainees] = useState<Trainee[]>(sampleTrainees);
-  const [courses, setCourses] = useState<Course[]>(sampleCourses);
+  const [trainees, setTrainees] = useState<Trainee[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const toggleSidebar = () => setSidebarOpen(prev => !prev);
+
+  // Test Supabase connection
+  useEffect(() => {
+    console.log('🚀 App starting...');
+    console.log('🚀 Supabase client:', supabase);
+    
+    // Test connection
+    supabase.auth.getSession().then(({ data, error }) => {
+      console.log('🔍 Supabase connection test:', { data, error });
+    });
+  }, []);
+
+  // Fetch trainees from Supabase
+  const fetchTrainees = async () => {
+    try {
+      console.log('🔍 Fetching trainees from Supabase...');
+      console.log('🔍 Supabase URL:', (import.meta as any).env.VITE_SUPABASE_URL);
+      console.log('🔍 Supabase Key exists:', !!(import.meta as any).env.VITE_SUPABASE_ANON_KEY);
+      
+      // First get the total count
+      const { count, error: countError } = await supabase
+        .from('trainees')
+        .select('*', { count: 'exact', head: true });
+
+      console.log('🔍 Total records in table:', count);
+      
+      // Fetch ALL records using pagination
+      let allTrainees: any[] = [];
+      let from = 0;
+      const pageSize = 1000;
+      
+      while (from < count) {
+        console.log(`🔍 Fetching records ${from} to ${from + pageSize}...`);
+        
+        const { data: pageData, error: pageError } = await supabase
+          .from('trainees')
+          .select('*')
+          .order('full_name')
+          .range(from, from + pageSize - 1);
+
+        if (pageError) {
+          console.error('❌ Page error:', pageError);
+          throw pageError;
+        }
+
+        if (pageData) {
+          allTrainees = [...allTrainees, ...pageData];
+          console.log(`✅ Fetched ${pageData.length} records, total so far: ${allTrainees.length}`);
+        }
+
+        from += pageSize;
+      }
+
+      console.log('🔍 Raw Supabase response:', { data: allTrainees, error: null });
+      console.log('🔍 Data type:', typeof allTrainees);
+      console.log('🔍 Data is array:', Array.isArray(allTrainees));
+      console.log('🔍 Data length:', allTrainees?.length);
+      console.log('🔍 First few records:', allTrainees?.slice(0, 3));
+
+      console.log('✅ Trainees loaded:', allTrainees?.length || 0, 'records');
+      if (allTrainees && allTrainees.length > 0) {
+        console.log('📋 First trainee:', allTrainees[0]);
+        console.log('📋 First trainee keys:', Object.keys(allTrainees[0]));
+        console.log('📋 Sample trainees (first 3):', allTrainees.slice(0, 3));
+        
+        // Only remove exact duplicates based on ID, not names
+        const uniqueTrainees = allTrainees.filter((trainee, index, self) => {
+          return index === self.findIndex(t => t.id === trainee.id);
+        });
+        
+        console.log('🔍 After deduplication:', uniqueTrainees.length, 'unique trainees');
+        console.log('🔍 Setting trainees state with:', uniqueTrainees.length, 'records');
+        setTrainees(uniqueTrainees);
+        console.log('🔍 State should now have:', uniqueTrainees.length, 'trainees');
+      } else {
+        console.log('⚠️ No data returned from Supabase');
+        setTrainees([]);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching trainees:', error);
+    }
+  };
+
+  const refreshData = async () => {
+    console.log('🔄 Refreshing data...');
+    setLoading(true);
+    await fetchTrainees();
+    setLoading(false);
+    console.log('✅ Data refresh complete');
+  };
+
+  // Load data on component mount
+  useEffect(() => {
+    console.log('📦 AppProvider mounted, loading data...');
+    refreshData();
+  }, []);
 
   const login = async (role: 'instructor' | 'admin', name: string, email?: string) => {
     // Accept any email for demo, but only allow core emails for admin/instructor
@@ -209,18 +159,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCurrentUser(null);
   };
 
-  // CRUD methods
-  const addCentre = async (centre: Omit<Centre, 'id'>) => {
-    setCentres(prev => [...prev, { ...centre, id: Date.now().toString() }]);
-  };
-  const addTrainer = async (trainer: Omit<Trainer, 'id'>) => {
-    setTrainers(prev => [...prev, { ...trainer, id: Date.now().toString() }]);
-  };
+  // Add trainee to Supabase
   const addTrainee = async (trainee: Omit<Trainee, 'id'>) => {
-    setTrainees(prev => [...prev, { ...trainee, id: Date.now().toString() }]);
-  };
-  const addCourse = async (course: Omit<Course, 'id'>) => {
-    setCourses(prev => [...prev, { ...course, id: Date.now().toString() }]);
+    try {
+      const { data, error } = await supabase
+        .from('trainees')
+        .insert([trainee])
+        .select()
+        .single();
+      
+      if (error) throw error;
+      setTrainees(prev => [...prev, data]);
+    } catch (error) {
+      console.error('Error adding trainee:', error);
+      throw error;
+    }
   };
 
   return (
@@ -231,14 +184,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         currentUser,
         login,
         logout,
-        centres,
-        trainers,
         trainees,
-        courses,
-        addCentre,
-        addTrainer,
+        loading,
         addTrainee,
-        addCourse
+        refreshData
       }}
     >
       {children}

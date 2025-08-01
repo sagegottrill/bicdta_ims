@@ -31,8 +31,8 @@ const CourseForm: React.FC<CourseFormProps> = ({ onClose }) => {
     setLoading(true);
     try {
       await addCourse(formData);
-      toast({ title: 'Success', description: 'Course added successfully!' });
-      onClose();
+    toast({ title: 'Success', description: 'Course added successfully!' });
+    onClose();
     } catch (err) {
       toast({ title: 'Error', description: 'Failed to add course', variant: 'destructive' });
     } finally {

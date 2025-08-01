@@ -34,16 +34,16 @@ const CentreForm: React.FC<CentreFormProps> = ({ onClose }) => {
     setLoading(true);
     try {
       await addCentre({
-        name: formData.name,
-        location: formData.location,
-        capacity: parseInt(formData.capacity),
-        computers: parseInt(formData.computers) || 0,
-        internetStatus: formData.internetStatus,
-        powerSource: formData.powerSource,
-        coordinator: formData.coordinator,
-      });
-      toast({ title: 'Success', description: 'Centre added successfully!' });
-      onClose();
+      name: formData.name,
+      location: formData.location,
+      capacity: parseInt(formData.capacity),
+      computers: parseInt(formData.computers) || 0,
+      internetStatus: formData.internetStatus,
+      powerSource: formData.powerSource,
+      coordinator: formData.coordinator,
+    });
+    toast({ title: 'Success', description: 'Centre added successfully!' });
+    onClose();
     } catch (err) {
       toast({ title: 'Error', description: 'Failed to add centre', variant: 'destructive' });
     } finally {

@@ -1,35 +1,39 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { useAppContext } from '@/contexts/AppContext';
-import { ArrowLeft } from 'lucide-react';
-import { toast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
+import { X } from 'lucide-react';
 
 interface TraineeFormProps {
   onClose: () => void;
 }
 
 const TraineeForm: React.FC<TraineeFormProps> = ({ onClose }) => {
-  const { addTrainee, centres, courses } = useAppContext();
+  const { addTrainee } = useAppContext();
+  const { toast } = useToast();
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    age: '',
+    full_name: '',
     gender: '',
-    lga: '',
-    education: '',
-    employment: '',
-    assignedCentre: '',
-    course: '',
+    date_of_birth: '',
+    age: '',
+    educational_background: '',
+    employment_status: '',
+    centre_name: '',
+    cohort_number: '',
+    id_number: '',
+    address: '',
+    learner_category: '',
   });
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.email || !formData.age || !formData.gender) {
+    if (!formData.full_name || !formData.gender || !formData.age) {
       toast({ title: 'Error', description: 'Please fill in all required fields', variant: 'destructive' });
       return;
     }
@@ -38,7 +42,7 @@ const TraineeForm: React.FC<TraineeFormProps> = ({ onClose }) => {
       await addTrainee({
         ...formData,
         age: parseInt(formData.age),
-        enrollmentDate: new Date().toISOString().split('T')[0],
+        cohort_number: parseInt(formData.cohort_number) || 1,
       });
       toast({ title: 'Success', description: 'Trainee enrolled successfully!' });
       onClose();
@@ -54,138 +58,166 @@ const TraineeForm: React.FC<TraineeFormProps> = ({ onClose }) => {
   };
 
   return (
-    <Card className="max-w-2xl mx-auto shadow-lg border-0">
-      <CardHeader>
-        <div className="flex items-center gap-3">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <Card className="max-w-2xl mx-auto shadow-lg border-0 max-h-[90vh] overflow-y-auto">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-xl font-bold text-slate-800">Enroll New Trainee</CardTitle>
           <Button variant="ghost" size="sm" onClick={onClose}>
-            <ArrowLeft className="w-4 h-4" />
+            <X className="w-4 h-4" />
           </Button>
-          <CardTitle className="text-2xl">Enroll Trainee</CardTitle>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Full Name *</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => handleChange('name', e.target.value)}
-                placeholder="Enter full name"
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="full_name">Full Name *</Label>
+                <Input
+                  id="full_name"
+                  value={formData.full_name}
+                  onChange={(e) => handleChange('full_name', e.target.value)}
+                  placeholder="Enter full name"
+                  className="mt-1"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="gender">Gender *</Label>
+                <Select value={formData.gender} onValueChange={(value) => handleChange('gender', value)}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select gender" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="date_of_birth">Date of Birth</Label>
+                <Input
+                  id="date_of_birth"
+                  type="date"
+                  value={formData.date_of_birth}
+                  onChange={(e) => handleChange('date_of_birth', e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="age">Age *</Label>
+                <Input
+                  id="age"
+                  type="number"
+                  value={formData.age}
+                  onChange={(e) => handleChange('age', e.target.value)}
+                  placeholder="Enter age"
+                  className="mt-1"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="educational_background">Educational Background</Label>
+                <Select value={formData.educational_background} onValueChange={(value) => handleChange('educational_background', value)}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select education" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="primary">Primary</SelectItem>
+                    <SelectItem value="secondary">Secondary</SelectItem>
+                    <SelectItem value="tertiary">Tertiary</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="employment_status">Employment Status</Label>
+                <Select value={formData.employment_status} onValueChange={(value) => handleChange('employment_status', value)}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="employed">Employed</SelectItem>
+                    <SelectItem value="unemployed">Unemployed</SelectItem>
+                    <SelectItem value="student">Student</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="centre_name">Centre Name</Label>
+                <Input
+                  id="centre_name"
+                  value={formData.centre_name}
+                  onChange={(e) => handleChange('centre_name', e.target.value)}
+                  placeholder="Enter centre name"
+                  className="mt-1"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="cohort_number">Cohort Number</Label>
+                <Input
+                  id="cohort_number"
+                  type="number"
+                  value={formData.cohort_number}
+                  onChange={(e) => handleChange('cohort_number', e.target.value)}
+                  placeholder="Enter cohort number"
+                  className="mt-1"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="id_number">ID Number</Label>
+                <Input
+                  id="id_number"
+                  value={formData.id_number}
+                  onChange={(e) => handleChange('id_number', e.target.value)}
+                  placeholder="Enter ID number"
+                  className="mt-1"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="learner_category">Learner Category</Label>
+                <Select value={formData.learner_category} onValueChange={(value) => handleChange('learner_category', value)}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="beginner">Beginner</SelectItem>
+                    <SelectItem value="intermediate">Intermediate</SelectItem>
+                    <SelectItem value="advanced">Advanced</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="address">Address</Label>
+              <Textarea
+                id="address"
+                value={formData.address}
+                onChange={(e) => handleChange('address', e.target.value)}
+                placeholder="Enter full address"
+                className="mt-1"
+                rows={3}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email Address *</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => handleChange('email', e.target.value)}
-                placeholder="Enter email address"
-              />
+
+            <div className="flex justify-end gap-3 pt-4">
+              <Button type="button" variant="outline" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={loading}>
+                {loading ? 'Enrolling...' : 'Enroll Trainee'}
+              </Button>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="age">Age *</Label>
-              <Input
-                id="age"
-                type="number"
-                value={formData.age}
-                onChange={(e) => handleChange('age', e.target.value)}
-                placeholder="Enter age"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="gender">Gender *</Label>
-              <Select value={formData.gender} onValueChange={(value) => handleChange('gender', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select gender" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="male">Male</SelectItem>
-                  <SelectItem value="female">Female</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="lga">LGA</Label>
-              <Input
-                id="lga"
-                value={formData.lga}
-                onChange={(e) => handleChange('lga', e.target.value)}
-                placeholder="Enter LGA"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="education">Education Level</Label>
-              <Select value={formData.education} onValueChange={(value) => handleChange('education', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select education level" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="primary">Primary</SelectItem>
-                  <SelectItem value="secondary">Secondary</SelectItem>
-                  <SelectItem value="tertiary">Tertiary</SelectItem>
-                  <SelectItem value="none">None</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="employment">Employment Status</Label>
-              <Select value={formData.employment} onValueChange={(value) => handleChange('employment', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select employment status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="employed">Employed</SelectItem>
-                  <SelectItem value="unemployed">Unemployed</SelectItem>
-                  <SelectItem value="student">Student</SelectItem>
-                  <SelectItem value="self-employed">Self-employed</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="centre">Assigned Centre</Label>
-              <Select value={formData.assignedCentre} onValueChange={(value) => handleChange('assignedCentre', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select centre" />
-                </SelectTrigger>
-                <SelectContent>
-                  {centres.map((centre) => (
-                    <SelectItem key={centre.id} value={centre.id}>
-                      {centre.name} - {centre.location}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="course">Course</Label>
-              <Select value={formData.course} onValueChange={(value) => handleChange('course', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select course" />
-                </SelectTrigger>
-                <SelectContent>
-                  {courses.map((course) => (
-                    <SelectItem key={course.id} value={course.id}>
-                      {course.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="flex gap-3 pt-4">
-            <Button type="submit" className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
-              Enroll Trainee
-            </Button>
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 

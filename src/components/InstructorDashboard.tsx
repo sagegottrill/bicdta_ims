@@ -4,31 +4,74 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAppContext } from '@/contexts/AppContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Users, BookOpen, LogOut, BarChart3, Download, Megaphone, Globe, Plus } from 'lucide-react';
+import { Users, LogOut, BarChart3, Download, Megaphone, Globe, Plus } from 'lucide-react';
 import TraineeForm from './forms/TraineeForm';
 
 const InstructorDashboard: React.FC = () => {
-  const { currentUser, logout, trainees, centres, courses } = useAppContext();
+  const { currentUser, logout, trainees, loading } = useAppContext();
   const { t, language, setLanguage } = useLanguage();
   const [showTraineeForm, setShowTraineeForm] = useState(false);
   const [announcement, setAnnouncement] = useState('');
   const [announcements, setAnnouncements] = useState<string[]>([]);
 
-  // Filter trainees for instructor's centre (assuming instructor name matches centre coordinator)
-  const myCentre = centres.find(c => c.coordinator === currentUser?.name);
-  const myTrainees = trainees.filter(t => t.assignedCentre === myCentre?.id);
-  const myCourses = courses.filter(c => myTrainees.some(t => t.course === c.id));
+  // Debug logging
+  console.log('🎯 InstructorDashboard - trainees count:', trainees.length);
+  console.log('🎯 InstructorDashboard - loading:', loading);
+  console.log('🎯 InstructorDashboard - first trainee:', trainees[0]);
+  
+  // Debug gender values
+  const genderValues = [...new Set(trainees.map(t => t.gender))];
+  console.log('🎯 Unique gender values in data:', genderValues);
+  console.log('🎯 Sample trainees with gender:', trainees.slice(0, 5).map(t => ({ name: t.full_name, gender: t.gender })));
+  console.log('🎯 Gender distribution:', {
+    male: trainees.filter(t => {
+      const gender = t.gender?.toLowerCase();
+      return gender === 'male' || gender === 'm';
+    }).length,
+    female: trainees.filter(t => {
+      const gender = t.gender?.toLowerCase();
+      return gender === 'female' || gender === 'f';
+    }).length,
+    other: trainees.filter(t => {
+      const gender = t.gender?.toLowerCase();
+      return !(gender === 'male' || gender === 'm' || gender === 'female' || gender === 'f');
+    }).length
+  });
+  
+  // Debug employment values
+  const employmentValues = [...new Set(trainees.map(t => t.employment_status))];
+  console.log('🎯 Unique employment values:', employmentValues);
+  
+  // Debug education values
+  const educationValues = [...new Set(trainees.map(t => t.educational_background))];
+  console.log('🎯 Unique education values:', educationValues);
 
   // Analytics
   const genderStats = [
-    { label: 'Male', count: myTrainees.filter(t => t.gender === 'male').length },
-    { label: 'Female', count: myTrainees.filter(t => t.gender === 'female').length },
+    { label: 'Male', count: trainees.filter(t => {
+      const gender = t.gender?.toLowerCase();
+      return gender === 'male' || gender === 'm';
+    }).length },
+    { label: 'Female', count: trainees.filter(t => {
+      const gender = t.gender?.toLowerCase();
+      return gender === 'female' || gender === 'f';
+    }).length },
   ];
-  const courseStats = myCourses.map(course => ({
-    title: course.title,
-    count: myTrainees.filter(t => t.course === course.id).length,
-  }));
-  const centreUtilization = myCentre ? Math.round((myTrainees.length / myCentre.capacity) * 100) : 0;
+  
+  console.log('🎯 Gender Stats Array:', genderStats);
+  console.log('🎯 Gender Stats Counts:', genderStats.map(gs => `${gs.label}: ${gs.count}`));
+  
+  const centreStats = trainees.reduce((acc, trainee) => {
+    const centreName = trainee.centre_name || 'Unknown Centre';
+    acc[centreName] = (acc[centreName] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const cohortStats = trainees.reduce((acc, trainee) => {
+    const cohortNum = trainee.cohort_number || 0;
+    acc[cohortNum.toString()] = (acc[cohortNum.toString()] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
 
   // Attendance (simple toggle for demo)
   const [attendance, setAttendance] = useState<{ [traineeId: string]: boolean }>({});
@@ -45,8 +88,19 @@ const InstructorDashboard: React.FC = () => {
   // Downloadable report (CSV)
   const downloadCSV = () => {
     const csv = [
-      ['Name', 'Email', 'Age', 'Gender', 'Education', 'Employment', 'Course'],
-      ...myTrainees.map(t => [t.name, t.email, t.age, t.gender, t.education, t.employment, courses.find(c => c.id === t.course)?.title || '']),
+      ['Full Name', 'Gender', 'Age', 'Educational Background', 'Employment Status', 'Centre Name', 'Cohort Number', 'ID Number', 'Address', 'Learner Category'],
+      ...trainees.map(t => [
+        t.full_name, 
+        t.gender, 
+        t.age, 
+        t.educational_background, 
+        t.employment_status, 
+        t.centre_name, 
+        t.cohort_number, 
+        t.id_number, 
+        t.address, 
+        t.learner_category
+      ]),
     ].map(row => row.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -56,6 +110,17 @@ const InstructorDashboard: React.FC = () => {
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
@@ -75,7 +140,7 @@ const InstructorDashboard: React.FC = () => {
                 <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-800 via-blue-800 to-indigo-800 bg-clip-text text-transparent">
                   {t('dashboard')}
                 </h1>
-                <p className="text-slate-600 mt-1">Welcome, {currentUser?.name} ({myCentre?.name || 'No Centre Assigned'})</p>
+                <p className="text-slate-600 mt-1">Welcome, {currentUser?.name}</p>
               </div>
             </div>
           </div>
@@ -108,7 +173,7 @@ const InstructorDashboard: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-blue-100 text-sm font-medium">{t('trainees')}</p>
-                  <p className="text-3xl font-bold">{myTrainees.length}</p>
+                  <p className="text-3xl font-bold">{trainees.length}</p>
                 </div>
                 <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
                   <Users className="w-6 h-6 text-white" />
@@ -121,11 +186,11 @@ const InstructorDashboard: React.FC = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-indigo-100 text-sm font-medium">{t('courses')}</p>
-                  <p className="text-3xl font-bold">{myCourses.length}</p>
+                  <p className="text-indigo-100 text-sm font-medium">Centres</p>
+                  <p className="text-3xl font-bold">{Object.keys(centreStats).length}</p>
                 </div>
                 <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                  <BookOpen className="w-6 h-6 text-white" />
+                  <BarChart3 className="w-6 h-6 text-white" />
                 </div>
               </div>
             </CardContent>
@@ -135,8 +200,8 @@ const InstructorDashboard: React.FC = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-purple-100 text-sm font-medium">Utilization</p>
-                  <p className="text-3xl font-bold">{centreUtilization}%</p>
+                  <p className="text-purple-100 text-sm font-medium">Cohorts</p>
+                  <p className="text-3xl font-bold">{Object.keys(cohortStats).length}</p>
                 </div>
                 <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
                   <BarChart3 className="w-6 h-6 text-white" />
@@ -184,7 +249,7 @@ const InstructorDashboard: React.FC = () => {
         <div className="bg-white rounded-2xl shadow-lg border border-slate-200/50 overflow-hidden mb-8">
           <div className="p-6 border-b border-slate-200">
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold text-slate-800">My Trainees</h2>
+              <h2 className="text-xl font-bold text-slate-800">All Trainees</h2>
               <div className="flex gap-3">
                 <Button 
                   onClick={() => setShowTraineeForm(true)} 
@@ -209,22 +274,28 @@ const InstructorDashboard: React.FC = () => {
             <table className="min-w-full">
               <thead>
                 <tr className="bg-gradient-to-r from-slate-50 to-blue-50 text-slate-800">
-                  <th className="py-4 px-6 text-left font-semibold">Name</th>
-                  <th className="py-4 px-6 text-left font-semibold">Email</th>
-                  <th className="py-4 px-6 text-left font-semibold">Age</th>
+                  <th className="py-4 px-6 text-left font-semibold">Full Name</th>
                   <th className="py-4 px-6 text-left font-semibold">Gender</th>
-                  <th className="py-4 px-6 text-left font-semibold">Course</th>
+                  <th className="py-4 px-6 text-left font-semibold">Age</th>
+                  <th className="py-4 px-6 text-left font-semibold">Centre</th>
+                  <th className="py-4 px-6 text-left font-semibold">Cohort</th>
+                  <th className="py-4 px-6 text-left font-semibold">Employment</th>
                   <th className="py-4 px-6 text-left font-semibold">Attendance</th>
                 </tr>
               </thead>
               <tbody>
-                {myTrainees.map(t => (
+                {trainees.map(t => (
                   <tr key={t.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                    <td className="py-4 px-6 font-medium text-slate-800">{t.name}</td>
-                    <td className="py-4 px-6 text-slate-600">{t.email}</td>
+                    <td className="py-4 px-6 font-medium text-slate-800">{t.full_name}</td>
+                                         <td className="py-4 px-6 text-slate-600 capitalize">
+                       {t.gender?.toLowerCase() === 'm' ? 'Male' : 
+                        t.gender?.toLowerCase() === 'f' ? 'Female' : 
+                        t.gender}
+                     </td>
                     <td className="py-4 px-6 text-slate-600">{t.age}</td>
-                    <td className="py-4 px-6 text-slate-600 capitalize">{t.gender}</td>
-                    <td className="py-4 px-6 text-slate-600">{courses.find(c => c.id === t.course)?.title || ''}</td>
+                                         <td className="py-4 px-6 text-slate-600">{t.centre_name}</td>
+                     <td className="py-4 px-6 text-slate-600">{t.cohort_number}</td>
+                     <td className="py-4 px-6 text-slate-600 capitalize">{t.employment_status}</td>
                     <td className="py-4 px-6">
                       <Button 
                         size="sm" 
@@ -233,17 +304,17 @@ const InstructorDashboard: React.FC = () => {
                           ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white' 
                           : 'border-slate-300 text-slate-700 hover:bg-slate-50'
                         } 
-                        onClick={() => markAttendance(t.id)}
+                        onClick={() => markAttendance(t.id.toString())}
                       >
                         {attendance[t.id] ? 'Present' : 'Mark Present'}
                       </Button>
                     </td>
                   </tr>
                 ))}
-                {myTrainees.length === 0 && (
+                {trainees.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="text-center py-12 text-slate-500">
-                      No trainees assigned yet.
+                    <td colSpan={7} className="text-center py-12 text-slate-500">
+                      No trainees found.
                     </td>
                   </tr>
                 )}
@@ -255,23 +326,23 @@ const InstructorDashboard: React.FC = () => {
         {/* Trainee Form Modal */}
         {showTraineeForm && <TraineeForm onClose={() => setShowTraineeForm(false)} />}
 
-        {/* Course Stats */}
+        {/* Centre Stats */}
         <div className="mb-8">
-          <h2 className="text-xl font-bold text-slate-800 mb-6">Course Statistics</h2>
+          <h2 className="text-xl font-bold text-slate-800 mb-6">Centre Statistics</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {courseStats.map(cs => (
-              <Card key={cs.title} className="border-slate-200 shadow-lg hover:shadow-xl transition-all duration-300">
+            {Object.entries(centreStats).map(([centre, count]) => (
+              <Card key={centre} className="border-slate-200 shadow-lg hover:shadow-xl transition-all duration-300">
                 <CardHeader>
-                  <CardTitle className="text-slate-800">{cs.title}</CardTitle>
+                  <CardTitle className="text-slate-800">{centre}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-blue-600">{cs.count} Trainees</div>
+                  <div className="text-2xl font-bold text-blue-600">{count} Trainees</div>
                 </CardContent>
               </Card>
             ))}
-            {courseStats.length === 0 && (
+            {Object.keys(centreStats).length === 0 && (
               <div className="text-slate-500 col-span-full text-center py-8">
-                No courses assigned yet.
+                No centres found.
               </div>
             )}
           </div>

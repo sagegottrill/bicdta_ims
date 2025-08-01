@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAppContext } from '@/contexts/AppContext';
-import { BarChart3, Users, Building2, BookOpen, LogOut, TrendingUp, Download, Edit, Trash2, Brain, Settings } from 'lucide-react';
+import { BarChart3, Users, LogOut, TrendingUp, Download, Edit, Trash2, Brain, Settings } from 'lucide-react';
 import StatsOverview from './admin/StatsOverview';
 import TraineeAnalysis from './admin/TraineeAnalysis';
 import CentreAnalysis from './admin/CentreAnalysis';
@@ -11,13 +11,18 @@ import PredictiveAnalytics from './admin/PredictiveAnalytics';
 type ActiveView = 'overview' | 'trainees' | 'centres' | 'predictive' | null;
 
 const AdminDashboard: React.FC = () => {
-  const { currentUser, logout, centres, trainers, trainees, courses } = useAppContext();
+  const { currentUser, logout, trainees, loading } = useAppContext();
   const [activeView, setActiveView] = useState<ActiveView>('overview');
   const [showSettings, setShowSettings] = useState(false);
 
   // Notifications
-  const lowUtilCentres = centres.filter(c => c.capacity > 0 && trainees.filter(t => t.assignedCentre === c.id).length / c.capacity < 0.5);
-  const highDropout = trainees.filter(t => t.employment === 'unemployed').length / (trainees.length || 1) > 0.5;
+  const centreStats = trainees.reduce((acc, trainee) => {
+    acc[trainee.centre_name] = (acc[trainee.centre_name] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const lowUtilCentres = Object.entries(centreStats).filter(([_, count]) => count < 5);
+  const highDropout = trainees.filter(t => t.employment_status === 'unemployed').length / (trainees.length || 1) > 0.5;
 
   // Settings state (simple demo)
   const [branding, setBranding] = useState('BICTDA Digital Literacy');
@@ -44,7 +49,7 @@ const AdminDashboard: React.FC = () => {
   const menuItems = [
     { id: 'overview' as const, label: 'Overview', icon: BarChart3, description: 'Key metrics and charts', color: 'from-blue-500 to-blue-600' },
     { id: 'trainees' as const, label: 'Trainee Analysis', icon: Users, description: 'Demographics and performance', color: 'from-indigo-500 to-indigo-600' },
-    { id: 'centres' as const, label: 'Centre Analysis', icon: Building2, description: 'Location and capacity data', color: 'from-purple-500 to-purple-600' },
+    { id: 'centres' as const, label: 'Centre Analysis', icon: Brain, description: 'Location and capacity data', color: 'from-purple-500 to-purple-600' },
     { id: 'predictive' as const, label: 'Predictive Analytics', icon: Brain, description: 'AI-powered insights and forecasting', color: 'from-emerald-500 to-emerald-600' },
   ];
 
@@ -57,6 +62,17 @@ const AdminDashboard: React.FC = () => {
       default: return <StatsOverview />;
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
@@ -102,190 +118,104 @@ const AdminDashboard: React.FC = () => {
 
         {/* Notifications */}
         {(lowUtilCentres.length > 0 || highDropout) && (
-          <div className="mb-6 p-4 bg-gradient-to-r from-amber-50 to-orange-50 border-l-4 border-amber-500 rounded-lg shadow-sm">
-            <h2 className="font-bold text-amber-800 mb-2">⚠️ Notifications</h2>
+          <div className="mb-8 space-y-4">
             {lowUtilCentres.length > 0 && (
-              <div className="mb-1 text-amber-700">Low utilization at: {lowUtilCentres.map(c => c.name).join(', ')}</div>
+              <Card className="border-amber-200 bg-amber-50">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center">
+                      <TrendingUp className="w-4 h-4 text-white" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-amber-800">Low Utilization Alert</p>
+                      <p className="text-amber-700 text-sm">
+                        {lowUtilCentres.length} centre(s) have less than 5 trainees
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             )}
             {highDropout && (
-              <div className="text-amber-700">High dropout/unemployment rate among trainees.</div>
+              <Card className="border-red-200 bg-red-50">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
+                      <Users className="w-4 h-4 text-white" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-red-800">High Unemployment Rate</p>
+                      <p className="text-red-700 text-sm">
+                        Over 50% of trainees are unemployed
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             )}
           </div>
         )}
 
-        {/* Quick Actions */}
-        <div className="flex flex-wrap gap-3 mb-8">
-          <Button 
-            onClick={() => exportCSV(trainees, 'trainees.csv')} 
-            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg"
-          >
-            <Download className="w-4 h-4 mr-2" />
-            Export Trainees
-          </Button>
-          <Button 
-            onClick={() => exportCSV(trainers, 'trainers.csv')} 
-            className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-lg"
-          >
-            <Download className="w-4 h-4 mr-2" />
-            Export Trainers
-          </Button>
-          <Button 
-            onClick={() => exportCSV(centres, 'centres.csv')} 
-            className="bg-gradient-to-r from-purple-600 to-emerald-600 hover:from-purple-700 hover:to-emerald-700 text-white shadow-lg"
-          >
-            <Download className="w-4 h-4 mr-2" />
-            Export Centres
-          </Button>
-          <Button 
-            onClick={() => exportCSV(courses, 'courses.csv')} 
-            className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-lg"
-          >
-            <Download className="w-4 h-4 mr-2" />
-            Export Courses
-          </Button>
-        </div>
-
-        {/* Key Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-blue-100 text-sm font-medium">Total Trainees</p>
-                  <p className="text-3xl font-bold">{trainees.length}</p>
-                </div>
-                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                  <Users className="w-6 h-6 text-white" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="bg-gradient-to-r from-indigo-500 to-indigo-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-indigo-100 text-sm font-medium">Total Trainers</p>
-                  <p className="text-3xl font-bold">{trainers.length}</p>
-                </div>
-                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                  <TrendingUp className="w-6 h-6 text-white" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-purple-100 text-sm font-medium">Total Centres</p>
-                  <p className="text-3xl font-bold">{centres.length}</p>
-                </div>
-                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                  <Building2 className="w-6 h-6 text-white" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-emerald-100 text-sm font-medium">Total Courses</p>
-                  <p className="text-3xl font-bold">{courses.length}</p>
-                </div>
-                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                  <BookOpen className="w-6 h-6 text-white" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
         {/* Navigation Menu */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <Card 
-                key={item.id} 
-                className={`group hover:shadow-xl transition-all duration-300 cursor-pointer border-0 shadow-lg hover:-translate-y-1 ${
-                  activeView === item.id ? 'ring-2 ring-blue-500 bg-gradient-to-r ' + item.color + ' text-white' : 'bg-white'
-                }`}
-                onClick={() => setActiveView(item.id)}
-              >
-                <CardHeader className="pb-3">
-                  <div className="flex items-center gap-3">
-                    <div className={`p-3 rounded-xl transition-all duration-300 ${
-                      activeView === item.id 
-                        ? 'bg-white/20' 
-                        : 'bg-gradient-to-r ' + item.color + ' group-hover:scale-110'
-                    }`}>
-                      <Icon className={`w-6 h-6 ${activeView === item.id ? 'text-white' : 'text-white'}`} />
-                    </div>
-                    <div>
-                      <CardTitle className={`text-lg ${activeView === item.id ? 'text-white' : 'text-slate-800'}`}>
-                        {item.label}
-                      </CardTitle>
-                      <CardDescription className={activeView === item.id ? 'text-blue-100' : 'text-slate-600'}>
-                        {item.description}
-                      </CardDescription>
-                    </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {menuItems.map((item) => (
+            <Card 
+              key={item.id}
+              className={`cursor-pointer transition-all duration-300 hover:shadow-lg border-0 bg-gradient-to-r ${item.color} text-white`}
+              onClick={() => setActiveView(item.id)}
+            >
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                    <item.icon className="w-6 h-6 text-white" />
                   </div>
-                </CardHeader>
-              </Card>
-            );
-          })}
+                  <div>
+                    <h3 className="font-semibold text-lg">{item.label}</h3>
+                    <p className="text-white/80 text-sm">{item.description}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
-        {/* Content Area */}
+        {/* Main Content */}
         <div className="bg-white rounded-2xl shadow-lg border border-slate-200/50 overflow-hidden">
           {renderView()}
         </div>
 
         {/* Settings Modal */}
         {showSettings && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-            <Card className="w-full max-w-md shadow-2xl border-0">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <Card className="max-w-md mx-auto shadow-lg">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Settings className="w-5 h-5" />
-                  System Settings
-                </CardTitle>
+                <CardTitle>System Settings</CardTitle>
+                <CardDescription>Configure system preferences</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-slate-700">Branding</label>
+                  <label className="text-sm font-medium">Branding</label>
                   <input
                     type="text"
                     value={branding}
-                    onChange={e => setBranding(e.target.value)}
-                    className="w-full border border-slate-300 rounded-xl px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+                    onChange={(e) => setBranding(e.target.value)}
+                    className="w-full mt-1 border border-slate-300 rounded-lg px-3 py-2"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-slate-700">Contact Email</label>
+                  <label className="text-sm font-medium">Contact Email</label>
                   <input
                     type="email"
                     value={contact}
-                    onChange={e => setContact(e.target.value)}
-                    className="w-full border border-slate-300 rounded-xl px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+                    onChange={(e) => setContact(e.target.value)}
+                    className="w-full mt-1 border border-slate-300 rounded-lg px-3 py-2"
                   />
                 </div>
-                <div className="flex gap-2 pt-4">
-                  <Button 
-                    onClick={() => setShowSettings(false)} 
-                    className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                  >
+                <div className="flex gap-3 pt-4">
+                  <Button onClick={() => setShowSettings(false)} className="flex-1">
                     Save
                   </Button>
-                  <Button 
-                    onClick={() => setShowSettings(false)} 
-                    variant="outline" 
-                    className="flex-1 border-slate-300 text-slate-700"
-                  >
+                  <Button variant="outline" onClick={() => setShowSettings(false)} className="flex-1">
                     Cancel
                   </Button>
                 </div>

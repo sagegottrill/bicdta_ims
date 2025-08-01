@@ -5,30 +5,37 @@ import { useAppContext } from '@/contexts/AppContext';
 import { Edit, Trash2 } from 'lucide-react';
 
 const TraineeAnalysis: React.FC<{ handleEdit?: (type: string, id: string) => void, handleDelete?: (type: string, id: string) => void }> = ({ handleEdit, handleDelete }) => {
-  const { trainees, centres, courses } = useAppContext();
+  const { trainees } = useAppContext();
 
-  const getCentreName = (centreId: string) => {
-    const centre = centres.find(c => c.id === centreId);
-    return centre ? centre.name : 'N/A';
-  };
-
-  const getCourseName = (courseId: string) => {
-    const course = courses.find(c => c.id === courseId);
-    return course ? course.title : 'N/A';
-  };
+  // Debug values
+  const educationValues = [...new Set(trainees.map(t => t.educational_background))];
+  const employmentValues = [...new Set(trainees.map(t => t.employment_status))];
+  console.log('🎯 TraineeAnalysis - Education values:', educationValues);
+  console.log('🎯 TraineeAnalysis - Employment values:', employmentValues);
+  
+  // Debug employment counts
+  const employmentCounts = employmentValues.map(value => ({
+    value,
+    count: trainees.filter(t => t.employment_status === value).length
+  }));
+  console.log('🎯 TraineeAnalysis - Employment counts:', employmentCounts);
 
   const educationStats = [
-    { level: 'Primary', count: trainees.filter(t => t.education === 'primary').length },
-    { level: 'Secondary', count: trainees.filter(t => t.education === 'secondary').length },
-    { level: 'Tertiary', count: trainees.filter(t => t.education === 'tertiary').length },
-    { level: 'None', count: trainees.filter(t => t.education === 'none').length },
+    { level: 'Primary', count: trainees.filter(t => t.educational_background?.toLowerCase().includes('primary')).length },
+    { level: 'Secondary', count: trainees.filter(t => t.educational_background?.toLowerCase().includes('secondary') || t.educational_background?.toLowerCase().includes('ssce')).length },
+    { level: 'Tertiary', count: trainees.filter(t => t.educational_background?.toLowerCase().includes('tertiary') || t.educational_background?.toLowerCase().includes('ond') || t.educational_background?.toLowerCase().includes('bsc')).length },
+    { level: 'None', count: trainees.filter(t => t.educational_background?.toLowerCase() === 'nil' || t.educational_background?.toLowerCase() === 'none').length },
   ];
 
   const employmentStats = [
-    { status: 'Employed', count: trainees.filter(t => t.employment === 'employed').length },
-    { status: 'Unemployed', count: trainees.filter(t => t.employment === 'unemployed').length },
-    { status: 'Student', count: trainees.filter(t => t.employment === 'student').length },
-    { status: 'Self-employed', count: trainees.filter(t => t.employment === 'self-employed').length },
+    { status: 'Employed', count: trainees.filter(t => {
+      const status = t.employment_status?.toLowerCase();
+      return status === 'employed' || status === 'emp';
+    }).length },
+    { status: 'Unemployed', count: trainees.filter(t => {
+      const status = t.employment_status?.toLowerCase();
+      return status === 'unemployed' || status === 'unemp';
+    }).length },
   ];
 
   return (
@@ -73,35 +80,37 @@ const TraineeAnalysis: React.FC<{ handleEdit?: (type: string, id: string) => voi
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
+                <TableHead>Full Name</TableHead>
                 <TableHead>Age</TableHead>
                 <TableHead>Gender</TableHead>
                 <TableHead>Education</TableHead>
                 <TableHead>Employment</TableHead>
                 <TableHead>Centre</TableHead>
-                <TableHead>Course</TableHead>
+                <TableHead>Cohort</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {trainees.map((trainee) => (
                 <TableRow key={trainee.id}>
-                  <TableCell className="font-medium">{trainee.name}</TableCell>
+                  <TableCell className="font-medium">{trainee.full_name}</TableCell>
                   <TableCell>{trainee.age}</TableCell>
                   <TableCell className="capitalize">{trainee.gender}</TableCell>
-                  <TableCell className="capitalize">{trainee.education}</TableCell>
-                  <TableCell className="capitalize">{trainee.employment}</TableCell>
-                  <TableCell>{getCentreName(trainee.assignedCentre)}</TableCell>
-                  <TableCell>{getCourseName(trainee.course)}</TableCell>
+                  <TableCell className="capitalize">{trainee.educational_background}</TableCell>
+                  <TableCell className="capitalize">{trainee.employment_status}</TableCell>
+                  <TableCell>{trainee.centre_name}</TableCell>
+                  <TableCell>{trainee.cohort_number}</TableCell>
                   <TableCell>
-                    <button onClick={() => (handleEdit ? handleEdit('trainee', trainee.id) : alert('Edit trainee ' + trainee.id))} className="inline-flex items-center p-1 text-green-700 hover:bg-green-100 rounded"><Edit className="w-4 h-4" /></button>
-                    <button onClick={() => (handleDelete ? handleDelete('trainee', trainee.id) : alert('Delete trainee ' + trainee.id))} className="inline-flex items-center p-1 text-red-700 hover:bg-red-100 rounded ml-2"><Trash2 className="w-4 h-4" /></button>
+                    <button onClick={() => (handleEdit ? handleEdit('trainee', trainee.id.toString()) : alert('Edit trainee ' + trainee.id))} className="inline-flex items-center p-1 text-green-700 hover:bg-green-100 rounded"><Edit className="w-4 h-4" /></button>
+                    <button onClick={() => (handleDelete ? handleDelete('trainee', trainee.id.toString()) : alert('Delete trainee ' + trainee.id))} className="inline-flex items-center p-1 text-red-700 hover:bg-red-100 rounded ml-2"><Trash2 className="w-4 h-4" /></button>
                   </TableCell>
                 </TableRow>
               ))}
               {trainees.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-gray-500">No trainees enrolled yet.</TableCell>
+                  <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                    No trainees found
+                  </TableCell>
                 </TableRow>
               )}
             </TableBody>

@@ -33,8 +33,8 @@ const TrainerForm: React.FC<TrainerFormProps> = ({ onClose }) => {
     setLoading(true);
     try {
       await addTrainer(formData);
-      toast({ title: 'Success', description: 'Trainer added successfully!' });
-      onClose();
+    toast({ title: 'Success', description: 'Trainer added successfully!' });
+    onClose();
     } catch (err) {
       toast({ title: 'Error', description: 'Failed to add trainer', variant: 'destructive' });
     } finally {

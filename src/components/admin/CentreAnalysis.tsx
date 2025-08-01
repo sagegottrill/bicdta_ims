@@ -6,24 +6,46 @@ import { useAppContext } from '@/contexts/AppContext';
 import { Edit, Trash2 } from 'lucide-react';
 
 const CentreAnalysis: React.FC<{ handleEdit?: (type: string, id: string) => void, handleDelete?: (type: string, id: string) => void }> = ({ handleEdit, handleDelete }) => {
-  const { centres, trainees } = useAppContext();
+  const { trainees } = useAppContext();
 
-  const getEnrollmentCount = (centreId: string) => {
-    return trainees.filter(t => t.assignedCentre === centreId).length;
-  };
-
-  const getUtilizationRate = (centreId: string, capacity: number) => {
-    const enrolled = getEnrollmentCount(centreId);
-    return capacity > 0 ? Math.round((enrolled / capacity) * 100) : 0;
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'available': return 'bg-green-100 text-green-800';
-      case 'limited': return 'bg-yellow-100 text-yellow-800';
-      case 'unavailable': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+  // Calculate centre statistics from trainees data
+  const centreStats = trainees.reduce((acc, trainee) => {
+    if (!acc[trainee.centre_name]) {
+      acc[trainee.centre_name] = {
+        name: trainee.centre_name,
+        trainees: 0,
+        maleCount: 0,
+        femaleCount: 0,
+        avgAge: 0,
+        ageSum: 0,
+        cohorts: new Set()
+      };
     }
+    
+    acc[trainee.centre_name].trainees++;
+    acc[trainee.centre_name].ageSum += trainee.age;
+    acc[trainee.centre_name].cohorts.add(trainee.cohort_number);
+    
+    if (trainee.gender?.toLowerCase() === 'male' || trainee.gender?.toLowerCase() === 'm') {
+      acc[trainee.centre_name].maleCount++;
+    } else if (trainee.gender?.toLowerCase() === 'female' || trainee.gender?.toLowerCase() === 'f') {
+      acc[trainee.centre_name].femaleCount++;
+    }
+    
+    return acc;
+  }, {} as Record<string, any>);
+
+  // Calculate averages and convert to array
+  const centres = Object.values(centreStats).map(centre => ({
+    ...centre,
+    avgAge: Math.round(centre.ageSum / centre.trainees),
+    cohortCount: centre.cohorts.size
+  }));
+
+  const getUtilizationColor = (traineeCount: number) => {
+    if (traineeCount > 50) return 'bg-red-100 text-red-800';
+    if (traineeCount > 30) return 'bg-yellow-100 text-yellow-800';
+    return 'bg-green-100 text-green-800';
   };
 
   return (
@@ -37,50 +59,43 @@ const CentreAnalysis: React.FC<{ handleEdit?: (type: string, id: string) => void
             <TableHeader>
               <TableRow>
                 <TableHead>Centre Name</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Capacity</TableHead>
-                <TableHead>Enrolled</TableHead>
+                <TableHead>Trainees</TableHead>
+                <TableHead>Male</TableHead>
+                <TableHead>Female</TableHead>
+                <TableHead>Avg Age</TableHead>
+                <TableHead>Cohorts</TableHead>
                 <TableHead>Utilization</TableHead>
-                <TableHead>Computers</TableHead>
-                <TableHead>Internet</TableHead>
-                <TableHead>Power</TableHead>
-                <TableHead>Coordinator</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {centres.map((centre) => {
-                const enrolled = getEnrollmentCount(centre.id);
-                const utilization = getUtilizationRate(centre.id, centre.capacity);
+              {centres.map((centre, index) => {
+                const utilization = centre.trainees > 50 ? 'High' : centre.trainees > 30 ? 'Medium' : 'Low';
                 return (
-                  <TableRow key={centre.id}>
+                  <TableRow key={index}>
                     <TableCell className="font-medium">{centre.name}</TableCell>
-                    <TableCell>{centre.location}</TableCell>
-                    <TableCell>{centre.capacity}</TableCell>
-                    <TableCell>{enrolled}</TableCell>
+                    <TableCell>{centre.trainees}</TableCell>
+                    <TableCell>{centre.maleCount}</TableCell>
+                    <TableCell>{centre.femaleCount}</TableCell>
+                    <TableCell>{centre.avgAge}</TableCell>
+                    <TableCell>{centre.cohortCount}</TableCell>
                     <TableCell>
-                      <Badge className={utilization > 80 ? 'bg-red-100 text-red-800' : utilization > 60 ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}>
-                        {utilization}%
+                      <Badge className={getUtilizationColor(centre.trainees)}>
+                        {utilization}
                       </Badge>
                     </TableCell>
-                    <TableCell>{centre.computers}</TableCell>
                     <TableCell>
-                      <Badge className={getStatusColor(centre.internetStatus)}>
-                        {centre.internetStatus || 'N/A'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="capitalize">{centre.powerSource || 'N/A'}</TableCell>
-                    <TableCell>{centre.coordinator || 'N/A'}</TableCell>
-                    <TableCell>
-                      <button onClick={() => (handleEdit ? handleEdit('centre', centre.id) : alert('Edit centre ' + centre.id))} className="inline-flex items-center p-1 text-green-700 hover:bg-green-100 rounded"><Edit className="w-4 h-4" /></button>
-                      <button onClick={() => (handleDelete ? handleDelete('centre', centre.id) : alert('Delete centre ' + centre.id))} className="inline-flex items-center p-1 text-red-700 hover:bg-red-100 rounded ml-2"><Trash2 className="w-4 h-4" /></button>
+                      <button onClick={() => (handleEdit ? handleEdit('centre', centre.name) : alert('Edit centre ' + centre.name))} className="inline-flex items-center p-1 text-green-700 hover:bg-green-100 rounded"><Edit className="w-4 h-4" /></button>
+                      <button onClick={() => (handleDelete ? handleDelete('centre', centre.name) : alert('Delete centre ' + centre.name))} className="inline-flex items-center p-1 text-red-700 hover:bg-red-100 rounded ml-2"><Trash2 className="w-4 h-4" /></button>
                     </TableCell>
                   </TableRow>
                 );
               })}
               {centres.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={11} className="text-center py-8 text-gray-500">No centres registered yet.</TableCell>
+                  <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                    No centres found
+                  </TableCell>
                 </TableRow>
               )}
             </TableBody>
@@ -91,33 +106,33 @@ const CentreAnalysis: React.FC<{ handleEdit?: (type: string, id: string) => void
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="shadow-lg border-0">
           <CardHeader>
-            <CardTitle className="text-lg">Total Capacity</CardTitle>
+            <CardTitle className="text-lg">Total Centres</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-blue-600">
-              {centres.reduce((sum, centre) => sum + centre.capacity, 0)}
+              {centres.length}
             </div>
           </CardContent>
         </Card>
 
         <Card className="shadow-lg border-0">
           <CardHeader>
-            <CardTitle className="text-lg">Total Computers</CardTitle>
+            <CardTitle className="text-lg">Total Trainees</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-green-600">
-              {centres.reduce((sum, centre) => sum + centre.computers, 0)}
+              {trainees.length}
             </div>
           </CardContent>
         </Card>
 
         <Card className="shadow-lg border-0">
           <CardHeader>
-            <CardTitle className="text-lg">Average Utilization</CardTitle>
+            <CardTitle className="text-lg">Avg Trainees/Centre</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-orange-600">
-              {centres.length > 0 ? Math.round(centres.reduce((sum, centre) => sum + getUtilizationRate(centre.id, centre.capacity), 0) / centres.length) : 0}%
+            <div className="text-3xl font-bold text-purple-600">
+              {centres.length > 0 ? Math.round(trainees.length / centres.length) : 0}
             </div>
           </CardContent>
         </Card>
