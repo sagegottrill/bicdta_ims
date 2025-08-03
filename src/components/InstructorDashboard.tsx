@@ -55,7 +55,7 @@ const InstructorDashboard: React.FC = () => {
 
   // Get unique centres and cohorts for filter dropdowns
   const uniqueCentres = [
-    "IKWA DIGITAL LITERACY CENTRE",
+            "DIKWA DIGITAL LITERACY CENTRE",
     "GAJIRAM ICT CENTER", 
     "GUBIO DIGITAL LITERACY CENTRE",
     "KAGA DIGITAL LITERACY CENTRE",

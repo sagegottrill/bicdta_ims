@@ -485,7 +485,7 @@ const AdminDashboard: React.FC = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {['IKWA DIGITAL LITERACY CENTRE', 'GAJIRAM ICT CENTER', 'GUBIO DIGITAL LITERACY CENTRE'].map((centre, index) => (
+                      {['DIKWA DIGITAL LITERACY CENTRE', 'GAJIRAM ICT CENTER', 'GUBIO DIGITAL LITERACY CENTRE'].map((centre, index) => (
                         <div key={centre} className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-50 to-emerald-50 rounded-lg border border-slate-200/50">
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg flex items-center justify-center text-white font-bold">
