@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAppContext } from '@/contexts/AppContext';
-import { TrendingUp, TrendingDown, Users, Target, AlertTriangle, CheckCircle } from 'lucide-react';
+import { TrendingUp, TrendingDown, Users, Target, AlertTriangle, CheckCircle, Brain, BarChart3, Activity, Award, Globe, Clock, PieChart, Zap, Lightbulb, Rocket } from 'lucide-react';
 
 const PredictiveAnalytics: React.FC = () => {
   const { trainees } = useAppContext();
@@ -35,7 +35,7 @@ const PredictiveAnalytics: React.FC = () => {
   const nilCount = trainees.filter(t => t.educational_background?.toLowerCase() === 'nil').length;
   
   // Age analysis
-  const avgAge = trainees.reduce((sum, t) => sum + (t.age || 0), 0) / totalTrainees;
+  const avgAge = totalTrainees > 0 ? trainees.reduce((sum, t) => sum + (t.age || 0), 0) / totalTrainees : 0;
   const youngTrainees = trainees.filter(t => (t.age || 0) < 25).length;
   const middleTrainees = trainees.filter(t => (t.age || 0) >= 25 && (t.age || 0) < 40).length;
   const olderTrainees = trainees.filter(t => (t.age || 0) >= 40).length;
@@ -61,218 +61,394 @@ const PredictiveAnalytics: React.FC = () => {
     .slice(0, 3);
 
   // Predictive insights
-  const employmentRate = (employedCount / totalTrainees) * 100;
-  const genderBalance = Math.abs(maleCount - femaleCount) / totalTrainees * 100;
-  const educationGap = (nilCount / totalTrainees) * 100;
-  const youthEngagement = (youngTrainees / totalTrainees) * 100;
+  const employmentRate = totalTrainees > 0 ? (employedCount / totalTrainees) * 100 : 0;
+  const genderBalance = totalTrainees > 0 ? Math.abs(maleCount - femaleCount) / totalTrainees * 100 : 0;
+  const educationGap = totalTrainees > 0 ? (nilCount / totalTrainees) * 100 : 0;
+  const youthEngagement = totalTrainees > 0 ? (youngTrainees / totalTrainees) * 100 : 0;
 
-  return (
-    <div className="space-y-6">
-      {/* Key Metrics */}
+    return (
+    <div className="space-y-8">
+      {/* Premium Header Section */}
+      <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 rounded-2xl p-8 text-white shadow-xl">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-3xl font-bold mb-2">Predictive Analytics Console</h2>
+            <p className="text-purple-100 text-lg">Advanced insights and future trend analysis</p>
+          </div>
+          <div className="hidden md:block">
+            <div className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center">
+              <Brain className="w-12 h-12 text-white" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Premium Analytics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0 shadow-lg">
+        <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-blue-100 text-sm font-medium">Total Trainees</p>
-                <p className="text-3xl font-bold">{totalTrainees.toLocaleString()}</p>
-                <p className="text-blue-100 text-xs">Active in system</p>
+                <p className="text-purple-100 text-sm font-medium mb-1">Total Trainees</p>
+                <p className="text-4xl font-bold">{totalTrainees.toLocaleString()}</p>
+                <p className="text-purple-100 text-xs mt-2">Active in system</p>
               </div>
-              <Users className="w-8 h-8 text-white/80" />
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                <Users className="w-6 h-6 text-white" />
+              </div>
             </div>
           </CardContent>
         </Card>
-
-        <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white border-0 shadow-lg">
+        
+        <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white border-0 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-green-100 text-sm font-medium">Employment Rate</p>
-                <p className="text-3xl font-bold">{employmentRate.toFixed(1)}%</p>
-                <p className="text-green-100 text-xs">{employedCount} employed</p>
+                <p className="text-emerald-100 text-sm font-medium mb-1">Employment Rate</p>
+                <p className="text-4xl font-bold">{employmentRate.toFixed(1)}%</p>
+                <p className="text-emerald-100 text-xs mt-2">{employedCount} employed</p>
               </div>
-              <TrendingUp className="w-8 h-8 text-white/80" />
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                <TrendingUp className="w-6 h-6 text-white" />
+              </div>
             </div>
           </CardContent>
         </Card>
-
-        <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white border-0 shadow-lg">
+        
+        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-purple-100 text-sm font-medium">Youth Engagement</p>
-                <p className="text-3xl font-bold">{youthEngagement.toFixed(1)}%</p>
-                <p className="text-purple-100 text-xs">Under 25 years</p>
+                <p className="text-blue-100 text-sm font-medium mb-1">Youth Engagement</p>
+                <p className="text-4xl font-bold">{youthEngagement.toFixed(1)}%</p>
+                <p className="text-blue-100 text-xs mt-2">{youngTrainees} under 25</p>
               </div>
-              <Target className="w-8 h-8 text-white/80" />
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                <Rocket className="w-6 h-6 text-white" />
+              </div>
             </div>
           </CardContent>
         </Card>
-
-        <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white border-0 shadow-lg">
+        
+        <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white border-0 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-orange-100 text-sm font-medium">Education Gap</p>
-                <p className="text-3xl font-bold">{educationGap.toFixed(1)}%</p>
-                <p className="text-orange-100 text-xs">Need support</p>
+        <div>
+                <p className="text-orange-100 text-sm font-medium mb-1">Education Gap</p>
+                <p className="text-4xl font-bold">{educationGap.toFixed(1)}%</p>
+                <p className="text-orange-100 text-xs mt-2">No formal education</p>
               </div>
-              <AlertTriangle className="w-8 h-8 text-white/80" />
-            </div>
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-white" />
+        </div>
+        </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Predictive Insights */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="shadow-lg border-0">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-green-600" />
-              Growth Predictions
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <Card className="border-0 shadow-xl">
+            <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-slate-800">
+              <Lightbulb className="w-5 h-5 text-purple-600" />
+              Key Predictive Insights
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-              <div>
-                <p className="font-semibold text-green-800">Employment Success</p>
-                <p className="text-sm text-green-600">Based on current trends</p>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-50 to-purple-50 rounded-lg border border-slate-200/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                  <span className="font-medium text-slate-800">Gender Balance</span>
+                  </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-purple-600">{genderBalance.toFixed(1)}%</p>
+                  <p className="text-sm text-slate-500">difference</p>
+                </div>
               </div>
-              <Badge className="bg-green-100 text-green-800">+{employmentRate.toFixed(1)}%</Badge>
-            </div>
-            
-            <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
-              <div>
-                <p className="font-semibold text-blue-800">Youth Development</p>
-                <p className="text-sm text-blue-600">Young trainee engagement</p>
+              
+              <div className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-50 to-emerald-50 rounded-lg border border-slate-200/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 bg-emerald-500 rounded-full"></div>
+                  <span className="font-medium text-slate-800">Employment Success</span>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-emerald-600">{employmentRate.toFixed(1)}%</p>
+                  <p className="text-sm text-slate-500">employed</p>
+                </div>
+                      </div>
+              
+              <div className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-50 to-blue-50 rounded-lg border border-slate-200/50">
+                      <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                  <span className="font-medium text-slate-800">Youth Engagement</span>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-blue-600">{youthEngagement.toFixed(1)}%</p>
+                  <p className="text-sm text-slate-500">under 25</p>
+                      </div>
+                    </div>
+              
+              <div className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-50 to-orange-50 rounded-lg border border-slate-200/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                  <span className="font-medium text-slate-800">Education Gap</span>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-orange-600">{educationGap.toFixed(1)}%</p>
+                  <p className="text-sm text-slate-500">no education</p>
+                </div>
+                </div>
               </div>
-              <Badge className="bg-blue-100 text-blue-800">+{youthEngagement.toFixed(1)}%</Badge>
-            </div>
-            
-            <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
-              <div>
-                <p className="font-semibold text-purple-800">Gender Balance</p>
-                <p className="text-sm text-purple-600">Diversity improvement</p>
-              </div>
-              <Badge className="bg-purple-100 text-purple-800">{genderBalance.toFixed(1)}% gap</Badge>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card className="shadow-lg border-0">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-orange-600" />
-              Areas for Improvement
+        <Card className="border-0 shadow-xl">
+            <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-slate-800">
+              <BarChart3 className="w-5 h-5 text-blue-600" />
+              Age Distribution Analysis
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex justify-between items-center p-3 bg-orange-50 rounded-lg">
-              <div>
-                <p className="font-semibold text-orange-800">Education Support</p>
-                <p className="text-sm text-orange-600">{nilCount} trainees need help</p>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-50 to-blue-50 rounded-lg border border-slate-200/50">
+              <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                  <span className="font-medium text-slate-800">Youth (Under 25)</span>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-blue-600">{youngTrainees}</p>
+                  <p className="text-sm text-slate-500">
+                    {totalTrainees > 0 ? ((youngTrainees / totalTrainees) * 100).toFixed(1) : 0}% of total
+                  </p>
+                </div>
               </div>
-              <Badge className="bg-orange-100 text-orange-800">{educationGap.toFixed(1)}%</Badge>
-            </div>
-            
-            <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg">
-              <div>
-                <p className="font-semibold text-red-800">Unemployment</p>
-                <p className="text-sm text-red-600">{unemployedCount} need jobs</p>
+              
+              <div className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-50 to-emerald-50 rounded-lg border border-slate-200/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 bg-emerald-500 rounded-full"></div>
+                  <span className="font-medium text-slate-800">Adults (25-40)</span>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-emerald-600">{middleTrainees}</p>
+                  <p className="text-sm text-slate-500">
+                    {totalTrainees > 0 ? ((middleTrainees / totalTrainees) * 100).toFixed(1) : 0}% of total
+                  </p>
+                </div>
               </div>
-              <Badge className="bg-red-100 text-red-800">{((unemployedCount/totalTrainees)*100).toFixed(1)}%</Badge>
-            </div>
-            
-            <div className="flex justify-between items-center p-3 bg-yellow-50 rounded-lg">
-              <div>
-                <p className="font-semibold text-yellow-800">Age Distribution</p>
-                <p className="text-sm text-yellow-600">Balance needed</p>
+              
+              <div className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-50 to-purple-50 rounded-lg border border-slate-200/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                  <span className="font-medium text-slate-800">Seniors (40+)</span>
+                        </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-purple-600">{olderTrainees}</p>
+                  <p className="text-sm text-slate-500">
+                    {totalTrainees > 0 ? ((olderTrainees / totalTrainees) * 100).toFixed(1) : 0}% of total
+                  </p>
+                        </div>
+                      </div>
+              
+              <div className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-50 to-orange-50 rounded-lg border border-slate-200/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                  <span className="font-medium text-slate-800">Average Age</span>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-orange-600">{avgAge.toFixed(1)}</p>
+                  <p className="text-sm text-slate-500">years</p>
+                </div>
               </div>
-              <Badge className="bg-yellow-100 text-yellow-800">{avgAge.toFixed(1)} avg</Badge>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Top Performing Centres */}
-      <Card className="shadow-lg border-0">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CheckCircle className="w-5 h-5 text-green-600" />
-            Top Performing Centres
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {topCentres.map(([centre, count], index) => (
-              <div key={centre} className="p-4 border border-slate-200 rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold text-slate-800">{centre}</h3>
-                  <Badge className="bg-green-100 text-green-800">#{index + 1}</Badge>
-                </div>
-                <p className="text-2xl font-bold text-green-600">{count}</p>
-                <p className="text-sm text-slate-600">Trainees</p>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Detailed Analytics */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="shadow-lg border-0">
+      {/* Top Performing Centres & Cohorts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <Card className="border-0 shadow-xl">
           <CardHeader>
-            <CardTitle>Employment Status Distribution</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-slate-800">
+              <Award className="w-5 h-5 text-emerald-600" />
+              Top Performing Centres
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-slate-600">Employed</span>
-                <div className="flex items-center gap-2">
-                  <div className="w-32 bg-slate-200 rounded-full h-2">
-                    <div className="bg-green-500 h-2 rounded-full" style={{width: `${(employedCount/totalTrainees)*100}%`}}></div>
+            <div className="space-y-4">
+              {topCentres.map(([centre, count], index) => (
+                <div key={centre} className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-50 to-emerald-50 rounded-lg border border-slate-200/50">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg flex items-center justify-center text-white font-bold">
+                      {index + 1}
+                    </div>
+                    <span className="font-medium text-slate-800">{centre?.toUpperCase()}</span>
                   </div>
-                  <span className="font-semibold">{employedCount}</span>
-                </div>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-slate-600">Unemployed</span>
-                <div className="flex items-center gap-2">
-                  <div className="w-32 bg-slate-200 rounded-full h-2">
-                    <div className="bg-red-500 h-2 rounded-full" style={{width: `${(unemployedCount/totalTrainees)*100}%`}}></div>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-emerald-600">{count}</p>
+                    <p className="text-sm text-slate-500">trainees</p>
                   </div>
-                  <span className="font-semibold">{unemployedCount}</span>
                 </div>
+              ))}
               </div>
+            </CardContent>
+          </Card>
+
+        <Card className="border-0 shadow-xl">
+            <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-slate-800">
+              <Activity className="w-5 h-5 text-blue-600" />
+              Top Performing Cohorts
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {topCohorts.map(([cohort, count], index) => (
+                <div key={cohort} className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-50 to-blue-50 rounded-lg border border-slate-200/50">
+              <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center text-white font-bold">
+                      {index + 1}
+                    </div>
+                    <span className="font-medium text-slate-800">Cohort {cohort}</span>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-blue-600">{count}</p>
+                    <p className="text-sm text-slate-500">trainees</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
+      </div>
 
-        <Card className="shadow-lg border-0">
+      {/* Education & Employment Analysis */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <Card className="border-0 shadow-xl">
           <CardHeader>
-            <CardTitle>Education Background</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-slate-800">
+              <Globe className="w-5 h-5 text-purple-600" />
+              Education Level Analysis
+                </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-slate-600">Primary</span>
-                <Badge className="bg-blue-100 text-blue-800">{primaryCount}</Badge>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-50 to-purple-50 rounded-lg border border-slate-200/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                  <span className="font-medium text-slate-800">Primary Education</span>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-purple-600">{primaryCount}</p>
+                  <p className="text-sm text-slate-500">
+                    {totalTrainees > 0 ? ((primaryCount / totalTrainees) * 100).toFixed(1) : 0}% of total
+                  </p>
+                </div>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-slate-600">Secondary</span>
-                <Badge className="bg-green-100 text-green-800">{secondaryCount}</Badge>
+              
+              <div className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-50 to-blue-50 rounded-lg border border-slate-200/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                  <span className="font-medium text-slate-800">Secondary Education</span>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-blue-600">{secondaryCount}</p>
+                  <p className="text-sm text-slate-500">
+                    {totalTrainees > 0 ? ((secondaryCount / totalTrainees) * 100).toFixed(1) : 0}% of total
+                  </p>
+                </div>
+                      </div>
+              
+              <div className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-50 to-emerald-50 rounded-lg border border-slate-200/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 bg-emerald-500 rounded-full"></div>
+                  <span className="font-medium text-slate-800">Tertiary Education</span>
+                      </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-emerald-600">{tertiaryCount}</p>
+                  <p className="text-sm text-slate-500">
+                    {totalTrainees > 0 ? ((tertiaryCount / totalTrainees) * 100).toFixed(1) : 0}% of total
+                  </p>
+                      </div>
+                    </div>
+              
+              <div className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-50 to-orange-50 rounded-lg border border-slate-200/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                  <span className="font-medium text-slate-800">No Formal Education</span>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-orange-600">{nilCount}</p>
+                  <p className="text-sm text-slate-500">
+                    {totalTrainees > 0 ? ((nilCount / totalTrainees) * 100).toFixed(1) : 0}% of total
+                  </p>
+                </div>
+                </div>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-slate-600">Tertiary</span>
-                <Badge className="bg-purple-100 text-purple-800">{tertiaryCount}</Badge>
+            </CardContent>
+          </Card>
+
+        <Card className="border-0 shadow-xl">
+            <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-slate-800">
+              <Zap className="w-5 h-5 text-emerald-600" />
+              Employment Status Analysis
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-50 to-emerald-50 rounded-lg border border-slate-200/50">
+              <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 bg-emerald-500 rounded-full"></div>
+                  <span className="font-medium text-slate-800">Employed</span>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-emerald-600">{employedCount}</p>
+                  <p className="text-sm text-slate-500">
+                    {totalTrainees > 0 ? ((employedCount / totalTrainees) * 100).toFixed(1) : 0}% of total
+                  </p>
+                </div>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-slate-600">No Education</span>
-                <Badge className="bg-orange-100 text-orange-800">{nilCount}</Badge>
+              
+              <div className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-50 to-orange-50 rounded-lg border border-slate-200/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                  <span className="font-medium text-slate-800">Unemployed</span>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-orange-600">{unemployedCount}</p>
+                  <p className="text-sm text-slate-500">
+                    {totalTrainees > 0 ? ((unemployedCount / totalTrainees) * 100).toFixed(1) : 0}% of total
+                  </p>
+                </div>
+                      </div>
+              
+              <div className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-50 to-blue-50 rounded-lg border border-slate-200/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                  <span className="font-medium text-slate-800">Employment Rate</span>
+                      </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-blue-600">{employmentRate.toFixed(1)}%</p>
+                  <p className="text-sm text-slate-500">success rate</p>
+                      </div>
+                    </div>
+              
+              <div className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-50 to-purple-50 rounded-lg border border-slate-200/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                  <span className="font-medium text-slate-800">Gender Distribution</span>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-purple-600">{maleCount + femaleCount}</p>
+                  <p className="text-sm text-slate-500">Male: {maleCount} | Female: {femaleCount}</p>
+                </div>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
       </div>
     </div>
   );

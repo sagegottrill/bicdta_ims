@@ -180,11 +180,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   const login = async (role: 'instructor' | 'admin', name: string, email?: string) => {
-    // Accept any email for demo, but only allow core emails for admin/instructor
-    if (
-      (role === 'admin' && email === 'admin.user@bictda.bo.gov.ng') ||
-      (role === 'instructor' && email === 'instructor@bictda.bo.gov.ng')
-    ) {
+    // Simple demo login - accept any email for testing
+    if (role === 'admin' || role === 'instructor') {
       setCurrentUser({ role, name });
       return true;
     }
