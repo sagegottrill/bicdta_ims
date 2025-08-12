@@ -1119,86 +1119,77 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return;
       }
       
-      // Get current Firebase user to check if they're an instructor
-      const currentUser = auth.currentUser;
-      if (currentUser) {
-        console.log('👤 Current Firebase user:', currentUser.email);
-        
+      // Common instructor credentials to try
+      const instructorCredentials = [
+        { email: 'daniel@example.com', password: 'password123', name: 'Daniel' },
+        { email: 'daniel@gmail.com', password: 'password123', name: 'Daniel' },
+        { email: 'daniel@bictda.com', password: 'password123', name: 'Daniel' },
+        { email: 'instructor@bictda.com', password: 'password123', name: 'Instructor' },
+        { email: 'admin@bictda.com', password: 'admin123', name: 'Admin' },
+        { email: 'test@bictda.com', password: 'test123', name: 'Test Instructor' },
+        { email: 'sagettrill@gmail.com', password: 'password123', name: 'Sage Trill' },
+        { email: 'sage@gmail.com', password: 'password123', name: 'Sage' },
+        { email: 'trill@gmail.com', password: 'password123', name: 'Trill' }
+      ];
+      
+      console.log('🔍 Trying to find existing Firebase instructors...');
+      
+      for (const cred of instructorCredentials) {
         try {
-          // Get user data from Firestore
-          const userData = await getUserData(currentUser.uid);
-          console.log('📄 User data from Firestore:', userData);
+          console.log(`🔐 Trying credentials for: ${cred.email}`);
           
-          if (userData && userData.role === 'instructor') {
-            console.log('✅ Found instructor in Firebase, migrating to Supabase...');
+          // Try to sign in with these credentials
+          const user = await signInWithEmail(cred.email, cred.password);
+          
+          if (user) {
+            console.log(`✅ Found user: ${user.email}`);
+            
+            // Get user data from Firestore
+            const userData = await getUserData(user.uid);
+            console.log('📄 User data from Firestore:', userData);
+            
+            // Check if this user is already in Supabase
+            const { data: existingInstructor } = await supabase
+              .from('instructors')
+              .select('id')
+              .eq('email', user.email)
+              .single();
+            
+            if (existingInstructor) {
+              console.log(`ℹ️ ${user.email} already exists in Supabase`);
+              continue;
+            }
             
             // Add to Supabase
-            const { data: newInstructor, error: insertError } = await supabase
+            const newInstructor = {
+              name: userData?.name || cred.name || user.displayName || 'Unknown',
+              email: user.email || cred.email,
+              lga: userData?.lga || '',
+              technical_manager_name: userData?.technical_manager_name || userData?.name || cred.name || 'Unknown',
+              phone_number: userData?.phone_number || '',
+              centre_name: userData?.centre_name || '',
+              status: userData?.status || 'approved', // Auto-approve existing users
+              is_online: false,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            };
+            
+            const { data: createdInstructor, error: insertError } = await supabase
               .from('instructors')
-              .insert([{
-                name: userData.name || currentUser.displayName || 'Unknown',
-                email: currentUser.email || '',
-                lga: userData.lga || '',
-                technical_manager_name: userData.technical_manager_name || userData.name || 'Unknown',
-                phone_number: userData.phone_number || '',
-                centre_name: userData.centre_name || '',
-                status: userData.status || 'pending',
-                is_online: false,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              }])
+              .insert([newInstructor])
               .select()
               .single();
             
             if (insertError) {
-              console.error('❌ Error migrating instructor:', currentUser.email, insertError);
+              console.error(`❌ Error migrating ${user.email}:`, insertError);
             } else {
-              console.log('✅ Migrated instructor to Supabase:', currentUser.email);
-              setInstructors(prev => [...prev, newInstructor]);
+              console.log(`✅ Migrated ${user.email} to Supabase`);
+              setInstructors(prev => [...prev, createdInstructor]);
             }
           }
         } catch (error) {
-          console.error('❌ Error getting user data:', error);
+          console.log(`ℹ️ ${cred.email} not found or wrong password`);
         }
-      }
-      
-      // Also try to get Daniel's data if he exists
-      console.log('🔄 Looking for Daniel in Firebase...');
-      try {
-        // Try to sign in as Daniel to get his data (this is just for migration)
-        const danielData = await signInWithEmail('daniel@example.com', 'password123');
-        if (danielData) {
-          const userData = await getUserData(danielData.uid);
-          if (userData) {
-            console.log('✅ Found Daniel in Firebase, migrating to Supabase...');
-            
-            const { data: newInstructor, error: insertError } = await supabase
-              .from('instructors')
-              .insert([{
-                name: userData.name || 'Daniel',
-                email: 'daniel@example.com',
-                lga: userData.lga || '',
-                technical_manager_name: userData.technical_manager_name || userData.name || 'Daniel',
-                phone_number: userData.phone_number || '',
-                centre_name: userData.centre_name || '',
-                status: userData.status || 'approved',
-                is_online: false,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              }])
-              .select()
-              .single();
-            
-            if (insertError) {
-              console.error('❌ Error migrating Daniel:', insertError);
-            } else {
-              console.log('✅ Migrated Daniel to Supabase');
-              setInstructors(prev => [...prev, newInstructor]);
-            }
-          }
-        }
-      } catch (error) {
-        console.log('ℹ️ Daniel not found or different credentials');
       }
       
       console.log('✅ Firebase instructor migration completed');
