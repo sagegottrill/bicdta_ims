@@ -8,9 +8,7 @@ import { Users, LogOut, BarChart3, Download, Megaphone, Globe, Plus, TrendingUp,
 import TraineeForm from './forms/TraineeForm';
 import ExportModal from './ExportModal';
 import CombinedReportsForm from './forms/CombinedReportsForm';
-import WeeklyReportForm from './forms/WeeklyReportForm';
-import MEReportForm from './forms/MEReportForm';
-import MonitoringEvaluationForm from './forms/MonitoringEvaluationForm';
+
 import InstructorProfile from './InstructorProfile';
 
 const InstructorDashboard: React.FC = () => {
@@ -20,9 +18,7 @@ const InstructorDashboard: React.FC = () => {
   const [showReportsForm, setShowReportsForm] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [showWeeklyReportForm, setShowWeeklyReportForm] = useState(false);
-  const [showMEReportForm, setShowMEReportForm] = useState(false);
-  const [showMonitoringEvaluationForm, setShowMonitoringEvaluationForm] = useState(false);
+
   const [selectedTrainee, setSelectedTrainee] = useState<any>(null);
   const [selectedCentre, setSelectedCentre] = useState<string>(
     currentUser?.role === 'instructor' && currentUser.centre_name 
@@ -325,9 +321,9 @@ const InstructorDashboard: React.FC = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-purple-100 text-sm font-medium mb-1">Reports</p>
-                  <p className="text-2xl font-bold">Submit</p>
-                  <p className="text-purple-100 text-xs mt-2">Weekly & Monthly</p>
+                  <p className="text-purple-100 text-sm font-medium mb-1">Reports Console</p>
+                  <p className="text-2xl font-bold">Submit All</p>
+                  <p className="text-purple-100 text-xs mt-2">Weekly, Monthly & M&E</p>
                 </div>
                 <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
                   <BarChart3 className="w-6 h-6 text-white" />
@@ -335,56 +331,6 @@ const InstructorDashboard: React.FC = () => {
               </div>
             </CardContent>
           </Card>
-        </div>
-
-        {/* Report Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 cursor-pointer" onClick={() => setShowWeeklyReportForm(true)}>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-blue-100 text-sm font-medium mb-1">Weekly Report</p>
-                  <p className="text-2xl font-bold">Submit</p>
-                  <p className="text-blue-100 text-xs mt-2">With photos & videos</p>
-                </div>
-                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                  <Calendar className="w-6 h-6 text-white" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 cursor-pointer" onClick={() => setShowMEReportForm(true)}>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-green-100 text-sm font-medium mb-1">M&E Report</p>
-                  <p className="text-2xl font-bold">Submit</p>
-                  <p className="text-green-100 text-xs mt-2">Monthly evaluation</p>
-                </div>
-                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                  <FileText className="w-6 h-6 text-white" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 cursor-pointer" onClick={() => setShowMonitoringEvaluationForm(true)}>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-purple-100 text-sm font-medium mb-1">Monitoring & Evaluation</p>
-                  <p className="text-2xl font-bold">Submit</p>
-                  <p className="text-purple-100 text-xs mt-2">Comprehensive assessment</p>
-                </div>
-                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                  <BarChart className="w-6 h-6 text-white" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-
         </div>
 
         {/* Announcements Section */}
@@ -662,16 +608,7 @@ const InstructorDashboard: React.FC = () => {
         <InstructorProfile onClose={() => setShowProfile(false)} />
       )}
 
-      {/* Report Form Modals */}
-      {showWeeklyReportForm && (
-        <WeeklyReportForm onClose={() => setShowWeeklyReportForm(false)} />
-      )}
-      {showMEReportForm && (
-        <MEReportForm onClose={() => setShowMEReportForm(false)} />
-      )}
-      {showMonitoringEvaluationForm && (
-        <MonitoringEvaluationForm onClose={() => setShowMonitoringEvaluationForm(false)} />
-      )}
+
 
       {/* Edit Exam Status Modal */}
       {showEditModal && selectedTrainee && (
@@ -765,7 +702,7 @@ const InstructorDashboard: React.FC = () => {
                   Dropout
                 </Button>
               </div>
-        </div>
+            </div>
 
             <div className="flex gap-3 pt-4">
                 <Button
