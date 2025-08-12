@@ -489,8 +489,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await fetchCentres();
     await fetchInstructors();
     
-    // Migrate Firebase instructor data to Supabase
-    await migrateFirebaseInstructors();
+    // Ensure instructors table exists
+    await ensureInstructorsTable();
+    
+    // Migrate Daniel's data if needed
+    await migrateDanielToSupabase();
     
     setLoading(false);
     console.log('✅ Data refresh complete');
@@ -1104,97 +1107,122 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Migrate real Firebase instructor data to Supabase
-  const migrateFirebaseInstructors = async () => {
+  // Simple function to ensure instructors table exists and migrate existing users
+  const ensureInstructorsTable = async () => {
     try {
-      console.log('🔄 Migrating real Firebase instructor data to Supabase...');
+      console.log('🔍 Checking if instructors table exists...');
       
-      // Check if we already have instructors in Supabase
-      const { data: currentInstructors } = await supabase
+      // Try to query the table
+      const { data, error } = await supabase
+        .from('instructors')
+        .select('id')
+        .limit(1);
+      
+      if (error && error.code === '42P01') {
+        console.log('⚠️ Instructors table doesn\'t exist yet');
+        return false;
+      }
+      
+      console.log('✅ Instructors table exists');
+      
+      // Check if we have any instructors in Supabase
+      const { data: existingInstructors } = await supabase
         .from('instructors')
         .select('*');
       
-      if (currentInstructors && currentInstructors.length > 0) {
-        console.log('ℹ️ Instructors already exist in Supabase, skipping migration');
-        return;
-      }
-      
-      // Common instructor credentials to try
-      const instructorCredentials = [
-        { email: 'daniel@example.com', password: 'password123', name: 'Daniel' },
-        { email: 'daniel@gmail.com', password: 'password123', name: 'Daniel' },
-        { email: 'daniel@bictda.com', password: 'password123', name: 'Daniel' },
-        { email: 'instructor@bictda.com', password: 'password123', name: 'Instructor' },
-        { email: 'admin@bictda.com', password: 'admin123', name: 'Admin' },
-        { email: 'test@bictda.com', password: 'test123', name: 'Test Instructor' },
-        { email: 'sagettrill@gmail.com', password: 'password123', name: 'Sage Trill' },
-        { email: 'sage@gmail.com', password: 'password123', name: 'Sage' },
-        { email: 'trill@gmail.com', password: 'password123', name: 'Trill' }
-      ];
-      
-      console.log('🔍 Trying to find existing Firebase instructors...');
-      
-      for (const cred of instructorCredentials) {
-        try {
-          console.log(`🔐 Trying credentials for: ${cred.email}`);
+      if (!existingInstructors || existingInstructors.length === 0) {
+        console.log('🔄 No instructors in Supabase, checking Firebase...');
+        
+        // Try to get current user if they're logged in
+        const currentUser = auth.currentUser;
+        if (currentUser) {
+          console.log('👤 Found logged in user:', currentUser.email);
           
-          // Try to sign in with these credentials
-          const user = await signInWithEmail(cred.email, cred.password);
-          
-          if (user) {
-            console.log(`✅ Found user: ${user.email}`);
-            
-            // Get user data from Firestore
-            const userData = await getUserData(user.uid);
-            console.log('📄 User data from Firestore:', userData);
-            
-            // Check if this user is already in Supabase
-            const { data: existingInstructor } = await supabase
-              .from('instructors')
-              .select('id')
-              .eq('email', user.email)
-              .single();
-            
-            if (existingInstructor) {
-              console.log(`ℹ️ ${user.email} already exists in Supabase`);
-              continue;
+          try {
+            const userData = await getUserData(currentUser.uid);
+            if (userData && userData.role === 'instructor') {
+              console.log('✅ Found instructor in Firebase, migrating to Supabase...');
+              
+              const { data: newInstructor, error: insertError } = await supabase
+                .from('instructors')
+                .insert([{
+                  name: userData.name || currentUser.displayName || 'Unknown',
+                  email: currentUser.email || '',
+                  lga: userData.lga || '',
+                  technical_manager_name: userData.technical_manager_name || userData.name || 'Unknown',
+                  phone_number: userData.phone_number || '',
+                  centre_name: userData.centre_name || '',
+                  status: userData.status || 'pending',
+                  is_online: false,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                }])
+                .select()
+                .single();
+              
+              if (insertError) {
+                console.error('❌ Error migrating instructor:', insertError);
+              } else {
+                console.log('✅ Migrated instructor to Supabase:', newInstructor);
+                setInstructors(prev => [...prev, newInstructor]);
+              }
             }
-            
-            // Add to Supabase
-            const newInstructor = {
-              name: userData?.name || cred.name || user.displayName || 'Unknown',
-              email: user.email || cred.email,
-              lga: userData?.lga || '',
-              technical_manager_name: userData?.technical_manager_name || userData?.name || cred.name || 'Unknown',
-              phone_number: userData?.phone_number || '',
-              centre_name: userData?.centre_name || '',
-              status: userData?.status || 'approved', // Auto-approve existing users
-              is_online: false,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            };
-            
-            const { data: createdInstructor, error: insertError } = await supabase
-              .from('instructors')
-              .insert([newInstructor])
-              .select()
-              .single();
-            
-            if (insertError) {
-              console.error(`❌ Error migrating ${user.email}:`, insertError);
-            } else {
-              console.log(`✅ Migrated ${user.email} to Supabase`);
-              setInstructors(prev => [...prev, createdInstructor]);
-            }
+          } catch (error) {
+            console.error('❌ Error getting user data:', error);
           }
-        } catch (error) {
-          console.log(`ℹ️ ${cred.email} not found or wrong password`);
         }
       }
       
-      console.log('✅ Firebase instructor migration completed');
+      return true;
     } catch (error) {
-      console.error('❌ Error during Firebase instructor migration:', error);
+      console.warn('⚠️ Error checking instructors table:', error);
+      return false;
+    }
+  };
+
+  // Manual migration function to add Daniel's data
+  const migrateDanielToSupabase = async () => {
+    try {
+      console.log('🔄 Manually migrating Daniel to Supabase...');
+      
+      // Check if Daniel already exists in Supabase
+      const { data: existingDaniel } = await supabase
+        .from('instructors')
+        .select('*')
+        .eq('email', 'danielnicholasdibal@gmail.com')
+        .single();
+      
+      if (existingDaniel) {
+        console.log('ℹ️ Daniel already exists in Supabase');
+        return;
+      }
+      
+      // Add Daniel's data to Supabase
+      const { data: newInstructor, error: insertError } = await supabase
+        .from('instructors')
+        .insert([{
+          name: 'Daniel Dibal',
+          email: 'danielnicholasdibal@gmail.com',
+          lga: 'Hawul',
+          technical_manager_name: 'Daniel Dibal',
+          phone_number: '08143084473',
+          centre_name: 'BAYO DIGITAL LITERACY CENTER',
+          status: 'pending',
+          is_online: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }])
+        .select()
+        .single();
+      
+      if (insertError) {
+        console.error('❌ Error migrating Daniel:', insertError);
+      } else {
+        console.log('✅ Daniel migrated to Supabase:', newInstructor);
+        setInstructors(prev => [...prev, newInstructor]);
+      }
+    } catch (error) {
+      console.error('❌ Error during Daniel migration:', error);
     }
   };
 
