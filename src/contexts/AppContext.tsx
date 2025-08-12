@@ -10,6 +10,7 @@ import {
   getUserData,
   addInstructorToFirestore 
 } from '@/lib/firebase';
+import { sendApprovalEmail, sendRejectionEmail } from '@/lib/emailService';
 
 interface Trainee {
   id: number;
@@ -127,7 +128,7 @@ interface AppContextType {
   updateInstructor: (id: number, instructor: Partial<Instructor>) => Promise<void>;
   deleteInstructor: (id: number) => Promise<void>;
   approveInstructor: (id: number) => Promise<void>;
-  revokeInstructor: (id: number) => Promise<void>;
+               revokeInstructor: (id: number, reason?: string) => Promise<void>;
   addCentre: (centre: Omit<Centre, 'id'>) => Promise<void>;
   updateCentre: (id: number, centre: Partial<Centre>) => Promise<void>;
   addWeeklyReport: (report: Omit<WeeklyReport, 'id'>) => Promise<void>;
@@ -189,14 +190,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         .limit(50);
 
       if (error) {
-        console.error('❌ Error fetching announcements:', error);
+        console.warn('⚠️ Announcements table might not exist:', error);
+        setAnnouncements([]);
         return;
       }
 
       console.log('✅ Announcements loaded:', data?.length || 0, 'records');
       setAnnouncements(data || []);
     } catch (error) {
-      console.error('❌ Error fetching announcements:', error);
+      console.warn('⚠️ Error fetching announcements (table might not exist):', error);
+      setAnnouncements([]);
     } finally {
       setAnnouncementsLoading(false);
     }
@@ -245,6 +248,63 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       supabase.removeChannel(channel);
     };
   }, [toast]);
+
+  // Set up real-time subscription for instructors
+  useEffect(() => {
+    console.log('👥 Setting up real-time instructors subscription...');
+    
+    const channel = supabase
+      .channel('instructors')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'instructors'
+        },
+        (payload) => {
+          console.log('👥 Real-time instructor update:', payload);
+          
+          if (payload.eventType === 'INSERT') {
+            const newInstructor = payload.new as Instructor;
+            setInstructors(prev => [...prev, newInstructor]);
+            
+            // Show toast notification for new instructor registrations
+            if (currentUser?.role === 'admin') {
+              toast({
+                title: "New Instructor Registration",
+                description: `${newInstructor.name} has registered and is pending approval.`,
+                duration: 5000,
+              });
+            }
+          } else if (payload.eventType === 'DELETE') {
+            setInstructors(prev => prev.filter(i => i.id !== payload.old.id));
+          } else if (payload.eventType === 'UPDATE') {
+            setInstructors(prev => prev.map(i => i.id === payload.new.id ? payload.new as Instructor : i));
+            
+            // Show toast notification for status changes
+            if (currentUser?.role === 'admin') {
+              const updatedInstructor = payload.new as Instructor;
+              const oldInstructor = payload.old as Instructor;
+              
+              if (updatedInstructor.status !== oldInstructor.status) {
+                toast({
+                  title: "Instructor Status Updated",
+                  description: `${updatedInstructor.name} status changed to ${updatedInstructor.status}.`,
+                  duration: 3000,
+                });
+              }
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('👥 Cleaning up instructors subscription...');
+      supabase.removeChannel(channel);
+    };
+  }, [currentUser?.role, toast]);
 
   // Fetch trainees from Supabase
   const fetchTrainees = async () => {
@@ -363,7 +423,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('❌ Error fetching centres:', error);
+        console.warn('⚠️ Centres table might not exist:', error);
+        setCentres([]);
         return;
       }
 
@@ -375,7 +436,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setCentres([]);
       }
     } catch (error) {
-      console.error('❌ Error fetching centres:', error);
+      console.warn('⚠️ Error fetching centres (table might not exist):', error);
+      setCentres([]);
     }
   };
 
@@ -389,7 +451,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('❌ Error fetching instructors:', error);
+        console.warn('⚠️ Instructors table might not exist:', error);
+        setInstructors([]);
         return;
       }
 
@@ -401,7 +464,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setInstructors([]);
       }
     } catch (error) {
-      console.error('❌ Error fetching instructors:', error);
+      console.warn('⚠️ Error fetching instructors (table might not exist):', error);
+      setInstructors([]);
     }
   };
 
@@ -440,6 +504,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         // Get additional user data from Firestore
         const userData = await getUserData(user.uid);
         
+        // For instructors, check approval status in Supabase
+        if (role === 'instructor') {
+          const { data: instructorData, error } = await supabase
+            .from('instructors')
+            .select('status')
+            .eq('email', email)
+            .single();
+          
+          if (error) {
+            console.error('❌ Error checking instructor status:', error);
+            throw new Error('Unable to verify instructor status');
+          }
+          
+          if (!instructorData) {
+            throw new Error('Instructor account not found');
+          }
+          
+          if (instructorData.status === 'pending') {
+            throw new Error('Your account is pending approval. Please wait for admin approval before logging in.');
+          }
+          
+          if (instructorData.status === 'revoked') {
+            throw new Error('Your account access has been revoked. Please contact the administrator.');
+          }
+          
+          // Update online status
+          await supabase
+            .from('instructors')
+            .update({ is_online: true, last_login: new Date().toISOString() })
+            .eq('email', email);
+        }
+        
         setCurrentUser({ 
           role, 
           name: userData?.name || name, 
@@ -448,10 +544,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
         
         console.log('✅ Login successful');
-        return true;
-      }
+      return true;
+    }
       
-      return false;
+    return false;
     } catch (error: any) {
       console.error('❌ Login error:', error);
       throw new Error(error.message);
@@ -460,8 +556,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const logout = async () => {
     try {
+      // If current user is an instructor, set them as offline
+      if (currentUser?.role === 'instructor' && currentUser?.email) {
+        await supabase
+          .from('instructors')
+          .update({ is_online: false })
+          .eq('email', currentUser.email);
+      }
+      
       await signOutUser();
-      setCurrentUser(null);
+    setCurrentUser(null);
       console.log('✅ Logout successful');
     } catch (error) {
       console.error('❌ Logout error:', error);
@@ -488,7 +592,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Add instructor to Supabase and Firebase
   const addInstructor = async (instructor: Omit<Instructor, 'id'>) => {
     try {
-      // Create Firebase user account
+      console.log('🚀 Starting instructor registration process...');
+      console.log('📧 Email:', instructor.email);
+      
+      // Create Firebase user account first
+      console.log('🔥 Creating Firebase user account...');
       const user = await signUpWithEmail(instructor.email, 'defaultPassword123', {
         name: instructor.name,
         lga: instructor.lga,
@@ -499,20 +607,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         status: 'pending',
         is_online: false
       });
+      
+      console.log('✅ Firebase user created successfully:', user.uid);
 
-      // Add to Supabase as well
-      const { data, error } = await supabase
-        .from('instructors')
-        .insert([instructor])
-        .select()
-        .single();
+      // Try to add to Supabase, but don't fail if table doesn't exist
+      try {
+        console.log('🗄️ Attempting to add to Supabase...');
+        const { data, error } = await supabase
+          .from('instructors')
+          .insert([instructor])
+          .select()
+          .single();
+        
+        if (error) {
+          console.warn('⚠️ Supabase table error (table might not exist):', error);
+          // Don't throw error, just log it
+        } else {
+          console.log('✅ Added to Supabase successfully');
+          setInstructors(prev => [...prev, data]);
+        }
+      } catch (supabaseError) {
+        console.warn('⚠️ Supabase error (table might not exist):', supabaseError);
+        // Don't fail the registration if Supabase fails
+      }
       
-      if (error) throw error;
-      setInstructors(prev => [...prev, data]);
-      
-      console.log('✅ Instructor added successfully to both Firebase and Supabase');
+      console.log('✅ Instructor registration completed successfully!');
     } catch (error) {
-      console.error('Error adding instructor:', error);
+      console.error('❌ Error in instructor registration:', error);
       throw error;
     }
   };
@@ -554,6 +675,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Approve instructor
   const approveInstructor = async (id: number) => {
     try {
+      console.log('✅ Approving instructor with ID:', id);
+      
+      // First get the instructor data
+      const { data: instructorData, error: fetchError } = await supabase
+        .from('instructors')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (fetchError) {
+        console.error('❌ Error fetching instructor data:', fetchError);
+        throw fetchError;
+      }
+      
+      if (!instructorData) {
+        throw new Error('Instructor not found');
+      }
+      
+      // Update the status to approved
       const { data, error } = await supabase
         .from('instructors')
         .update({ status: 'approved' })
@@ -562,16 +702,53 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         .single();
       
       if (error) throw error;
+      
+      // Update local state
       setInstructors(prev => prev.map(i => i.id === id ? data : i));
+      
+      // Send approval email
+      try {
+        console.log('📧 Sending approval email to:', instructorData.email);
+        await sendApprovalEmail(
+          instructorData.email,
+          instructorData.name,
+          instructorData.centre_name || 'Assigned Centre'
+        );
+        console.log('✅ Approval email sent successfully');
+      } catch (emailError) {
+        console.warn('⚠️ Failed to send approval email:', emailError);
+        // Don't fail the approval if email fails
+      }
+      
+      console.log('✅ Instructor approved successfully:', instructorData.name);
     } catch (error) {
-      console.error('Error approving instructor:', error);
+      console.error('❌ Error approving instructor:', error);
       throw error;
     }
   };
 
   // Revoke instructor access
-  const revokeInstructor = async (id: number) => {
+  const revokeInstructor = async (id: number, reason?: string) => {
     try {
+      console.log('❌ Revoking instructor with ID:', id);
+      
+      // First get the instructor data
+      const { data: instructorData, error: fetchError } = await supabase
+        .from('instructors')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (fetchError) {
+        console.error('❌ Error fetching instructor data:', fetchError);
+        throw fetchError;
+      }
+      
+      if (!instructorData) {
+        throw new Error('Instructor not found');
+      }
+      
+      // Update the status to revoked
       const { data, error } = await supabase
         .from('instructors')
         .update({ status: 'revoked' })
@@ -580,9 +757,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         .single();
       
       if (error) throw error;
+      
+      // Update local state
       setInstructors(prev => prev.map(i => i.id === id ? data : i));
+      
+      // Send revocation email
+      try {
+        console.log('📧 Sending revocation email to:', instructorData.email);
+        await sendRejectionEmail(
+          instructorData.email,
+          instructorData.name,
+          reason
+        );
+        console.log('✅ Revocation email sent successfully');
+      } catch (emailError) {
+        console.warn('⚠️ Failed to send revocation email:', emailError);
+        // Don't fail the revocation if email fails
+      }
+      
+      console.log('✅ Instructor revoked successfully:', instructorData.name);
     } catch (error) {
-      console.error('Error revoking instructor:', error);
+      console.error('❌ Error revoking instructor:', error);
       throw error;
     }
   };

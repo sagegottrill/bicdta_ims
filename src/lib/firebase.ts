@@ -39,7 +39,16 @@ export const signUpWithEmail = async (email: string, password: string, userData:
     
     return user;
   } catch (error: any) {
-    throw new Error(error.message);
+    // Handle specific Firebase auth errors
+    if (error.code === 'auth/email-already-in-use') {
+      throw new Error('This email is already registered. Please use a different email or try logging in instead.');
+    } else if (error.code === 'auth/weak-password') {
+      throw new Error('Password is too weak. Please choose a stronger password.');
+    } else if (error.code === 'auth/invalid-email') {
+      throw new Error('Invalid email address. Please enter a valid email.');
+    } else {
+      throw new Error(error.message || 'Failed to create account. Please try again.');
+    }
   }
 };
 

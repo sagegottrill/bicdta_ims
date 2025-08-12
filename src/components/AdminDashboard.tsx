@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAppContext } from '@/contexts/AppContext';
-import { BarChart3, Users, LogOut, TrendingUp, Download, Edit, Trash2, Brain, Settings, Megaphone, Globe, Building, GraduationCap, Award, Activity, Target, PieChart, MapPin, Clock, CheckCircle, Lightbulb, Shield, FileText } from 'lucide-react';
+import { BarChart3, LogOut, Download, Edit, Trash2, Brain, Settings, Megaphone, Globe, Building, GraduationCap, Award, PieChart, MapPin, Clock, CheckCircle, Shield, FileText } from 'lucide-react';
 import TraineeAnalysis from './admin/TraineeAnalysis';
 import CentreAnalysis from './admin/CentreAnalysis';
 import PredictiveAnalytics from './admin/PredictiveAnalytics';
@@ -766,82 +766,7 @@ const AdminDashboard: React.FC = () => {
                 </Card>
               </div>
 
-              {/* Quick Actions & Insights */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Recent Activities */}
-                <Card className="border-0 shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-slate-800">
-                      <Activity className="w-5 h-5 text-orange-600" />
-                      Recent Activities
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-start gap-3 p-3 bg-gradient-to-r from-green-50 to-green-100 rounded-lg border border-green-200">
-                        <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
-                        <div>
-                          <div className="font-medium text-slate-800">New trainees enrolled</div>
-                          <div className="text-sm text-slate-500">25 new trainees added this week</div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-start gap-3 p-3 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg border border-blue-200">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                        <div>
-                          <div className="font-medium text-slate-800">Cohort completion</div>
-                          <div className="text-sm text-slate-500">Cohort 2 completed successfully</div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-start gap-3 p-3 bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg border border-purple-200">
-                        <div className="w-2 h-2 bg-purple-500 rounded-full mt-2"></div>
-                        <div>
-                          <div className="font-medium text-slate-800">Employment milestone</div>
-                          <div className="text-sm text-slate-500">150 trainees employed this month</div>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
 
-                {/* Key Insights */}
-                <Card className="border-0 shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-slate-800">
-                      <Lightbulb className="w-5 h-5 text-yellow-600" />
-                      Key Insights
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="p-4 bg-gradient-to-r from-yellow-50 to-yellow-100 rounded-lg border border-yellow-200">
-                        <div className="flex items-center gap-2 mb-2">
-                          <TrendingUp className="w-4 h-4 text-yellow-600" />
-                          <span className="font-medium text-slate-800">Growth Trend</span>
-                        </div>
-                        <p className="text-sm text-slate-600">Trainee enrollment increased by 15% this quarter</p>
-                      </div>
-                      
-                      <div className="p-4 bg-gradient-to-r from-emerald-50 to-emerald-100 rounded-lg border border-emerald-200">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Target className="w-4 h-4 text-emerald-600" />
-                          <span className="font-medium text-slate-800">Success Rate</span>
-                        </div>
-                        <p className="text-sm text-slate-600">94% completion rate across all centres</p>
-                      </div>
-                      
-                      <div className="p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg border border-blue-200">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Users className="w-4 h-4 text-blue-600" />
-                          <span className="font-medium text-slate-800">Gender Balance</span>
-                        </div>
-                        <p className="text-sm text-slate-600">Excellent gender distribution achieved</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
             </div>
           )}
 

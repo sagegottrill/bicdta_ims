@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,6 +45,9 @@ const InstructorManagement: React.FC<InstructorManagementProps> = ({ currentUser
   const [editData, setEditData] = useState<any>({});
   const [selectedInstructor, setSelectedInstructor] = useState<any>(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [showRejectionModal, setShowRejectionModal] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [instructorToReject, setInstructorToReject] = useState<any>(null);
 
   const filteredInstructors = instructors.filter(instructor => {
     const matchesSearch = searchTerm === '' || 
@@ -104,12 +109,26 @@ const InstructorManagement: React.FC<InstructorManagementProps> = ({ currentUser
     }
   };
 
-  const handleRevoke = async (id: number) => {
+  const handleRevoke = async (id: number, reason?: string) => {
     try {
-      await revokeInstructor(id);
+      await revokeInstructor(id, reason);
       toast({ title: 'Success', description: 'Instructor access revoked successfully!' });
+      setShowRejectionModal(false);
+      setRejectionReason('');
+      setInstructorToReject(null);
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to revoke instructor access', variant: 'destructive' });
+    }
+  };
+
+  const openRejectionModal = (instructor: any) => {
+    setInstructorToReject(instructor);
+    setShowRejectionModal(true);
+  };
+
+  const handleRejectionSubmit = () => {
+    if (instructorToReject) {
+      handleRevoke(instructorToReject.id, rejectionReason);
     }
   };
 
@@ -328,7 +347,65 @@ const InstructorManagement: React.FC<InstructorManagementProps> = ({ currentUser
          </Card>
        )}
 
-       {/* Instructors Grid */}
+       {/* Pending Approvals Section */}
+      {stats.pending > 0 && (
+        <Card className="border-0 shadow-lg bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-yellow-800">
+              <Clock className="w-5 h-5 text-yellow-600" />
+              Pending Approvals ({stats.pending})
+            </CardTitle>
+            <p className="text-yellow-700 text-sm">
+              These instructors are waiting for your approval to access the system.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {filteredInstructors
+                .filter(instructor => instructor.status === 'pending')
+                .map((instructor) => (
+                  <div key={instructor.id} className="bg-white rounded-lg p-4 border border-yellow-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-full flex items-center justify-center">
+                          <span className="text-white font-semibold text-sm">
+                            {instructor.name.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-slate-800">{instructor.name}</h4>
+                          <p className="text-sm text-slate-600">{instructor.email}</p>
+                          <p className="text-xs text-slate-500">{instructor.centre_name}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => handleApprove(instructor.id)}
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                        >
+                          <CheckCircle className="w-4 h-4 mr-1" />
+                          Approve
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openRejectionModal(instructor)}
+                          className="border-red-300 text-red-600 hover:bg-red-50"
+                        >
+                          <XCircle className="w-4 h-4 mr-1" />
+                          Reject
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* All Instructors Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {filteredInstructors.map((instructor) => (
           <Card key={instructor.id} className="border-0 shadow-lg hover:shadow-xl transition-shadow">
@@ -473,7 +550,7 @@ const InstructorManagement: React.FC<InstructorManagementProps> = ({ currentUser
                 {instructor.status === 'approved' && (
                   <Button
                     size="sm"
-                    onClick={() => handleRevoke(instructor.id)}
+                    onClick={() => openRejectionModal(instructor)}
                     className="bg-red-600 hover:bg-red-700 text-white"
                   >
                     <XCircle className="w-4 h-4 mr-1" />
@@ -518,6 +595,57 @@ const InstructorManagement: React.FC<InstructorManagementProps> = ({ currentUser
           </CardContent>
         </Card>
       )}
+
+      {/* Rejection Reason Modal */}
+      <Dialog open={showRejectionModal} onOpenChange={setShowRejectionModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <XCircle className="w-5 h-5 text-red-600" />
+              Revoke Instructor Access
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to revoke access for {instructorToReject?.name}? 
+              You can provide a reason for the rejection (optional).
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-slate-700 mb-2 block">
+                Reason for Rejection (Optional)
+              </label>
+              <Textarea
+                placeholder="Enter reason for rejection..."
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                rows={3}
+                className="resize-none"
+              />
+            </div>
+          </div>
+          
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowRejectionModal(false);
+                setRejectionReason('');
+                setInstructorToReject(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleRejectionSubmit}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              <XCircle className="w-4 h-4 mr-2" />
+              Revoke Access
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
