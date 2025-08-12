@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAppContext } from '@/contexts/AppContext';
-import { BarChart3, LogOut, Download, Edit, Trash2, Brain, Settings, Megaphone, Globe, Building, GraduationCap, Award, PieChart, MapPin, Clock, CheckCircle, Shield, FileText, Users } from 'lucide-react';
+import { BarChart3, LogOut, Download, Edit, Trash2, Brain, Settings, Megaphone, Globe, Building, GraduationCap, Award, PieChart, MapPin, Clock, CheckCircle, Shield, FileText, Users, Activity } from 'lucide-react';
 import TraineeAnalysis from './admin/TraineeAnalysis';
 import CentreAnalysis from './admin/CentreAnalysis';
 import PredictiveAnalytics from './admin/PredictiveAnalytics';
