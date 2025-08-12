@@ -124,7 +124,7 @@ interface AppContextType {
   meReports: MEReport[];
   loading: boolean;
   addTrainee: (trainee: Omit<Trainee, 'id'>) => Promise<void>;
-  addInstructor: (instructor: Omit<Instructor, 'id'>) => Promise<void>;
+  addInstructor: (instructor: Omit<Instructor, 'id'>, password?: string) => Promise<void>;
   updateInstructor: (id: number, instructor: Partial<Instructor>) => Promise<void>;
   deleteInstructor: (id: number) => Promise<void>;
   approveInstructor: (id: number) => Promise<void>;
@@ -620,51 +620,88 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Add instructor to Supabase and Firebase
-  const addInstructor = async (instructor: Omit<Instructor, 'id'>) => {
+  const addInstructor = async (instructor: Omit<Instructor, 'id'>, password?: string) => {
     try {
       console.log('🚀 Starting instructor registration process...');
       console.log('📧 Email:', instructor.email);
       
-      // Create Firebase user account first
-      console.log('🔥 Creating Firebase user account...');
-      const user = await signUpWithEmail(instructor.email, 'defaultPassword123', {
-        name: instructor.name,
-        lga: instructor.lga,
-        technical_manager_name: instructor.technical_manager_name,
-        phone_number: instructor.phone_number,
-        centre_name: instructor.centre_name,
-        role: 'instructor',
-        status: 'pending',
-        is_online: false
-      });
-      
-      console.log('✅ Firebase user created successfully:', user.uid);
+      // Create Firebase user account first if password is provided
+      if (password) {
+        console.log('🔥 Creating Firebase user account...');
+        const user = await signUpWithEmail(instructor.email, password, {
+          name: instructor.name,
+          lga: instructor.lga,
+          technical_manager_name: instructor.technical_manager_name,
+          phone_number: instructor.phone_number,
+          centre_name: instructor.centre_name,
+          role: 'instructor',
+          status: 'pending',
+          is_online: false
+        });
+        console.log('✅ Firebase user created successfully:', user.uid);
+      }
 
-      // Try to add to Supabase, but don't fail if table doesn't exist
-      try {
-        console.log('🗄️ Attempting to add to Supabase...');
-        const { data, error } = await supabase
-          .from('instructors')
-          .insert([instructor])
-          .select()
-          .single();
-        
-        if (error) {
-          console.warn('⚠️ Supabase table error (table might not exist):', error);
-          // Don't throw error, just log it
+      // Add to Supabase - this is critical for admin approval
+      console.log('🗄️ Adding to Supabase for admin approval...');
+      const { data, error } = await supabase
+        .from('instructors')
+        .insert([{
+          ...instructor,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }])
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('❌ Supabase error:', error);
+        // If table doesn't exist, create it
+        if (error.code === '42P01') { // Table doesn't exist
+          console.log('🔄 Creating instructors table...');
+          await createInstructorsTable();
+          // Try again
+          const { data: retryData, error: retryError } = await supabase
+            .from('instructors')
+            .insert([{
+              ...instructor,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }])
+            .select()
+            .single();
+          
+          if (retryError) {
+            console.error('❌ Failed to create instructor after table creation:', retryError);
+            throw retryError;
+          }
+          
+          console.log('✅ Added to Supabase successfully after table creation');
+          setInstructors(prev => [...prev, retryData]);
         } else {
-          console.log('✅ Added to Supabase successfully');
-          setInstructors(prev => [...prev, data]);
+          throw error;
         }
-      } catch (supabaseError) {
-        console.warn('⚠️ Supabase error (table might not exist):', supabaseError);
-        // Don't fail the registration if Supabase fails
+      } else {
+        console.log('✅ Added to Supabase successfully');
+        setInstructors(prev => [...prev, data]);
       }
       
       console.log('✅ Instructor registration completed successfully!');
     } catch (error) {
       console.error('❌ Error in instructor registration:', error);
       throw error;
+    }
+  };
+
+  // Create instructors table if it doesn't exist
+  const createInstructorsTable = async () => {
+    try {
+      console.log('🔨 Creating instructors table...');
+      const { error } = await supabase.rpc('create_instructors_table');
+      if (error) {
+        console.warn('⚠️ Could not create table via RPC, table might already exist:', error);
+      }
+    } catch (error) {
+      console.warn('⚠️ Table creation failed, might already exist:', error);
     }
   };
 

@@ -63,7 +63,7 @@ const InstructorSignup: React.FC<InstructorSignupProps> = ({ onBackToLogin }) =>
         is_online: false
       });
 
-      // Also add to Supabase for data consistency
+      // Also add to Supabase for data consistency and admin approval
       await addInstructor({
         name: formData.technical_manager_name,
         lga: formData.lga,
@@ -73,7 +73,7 @@ const InstructorSignup: React.FC<InstructorSignupProps> = ({ onBackToLogin }) =>
         centre_name: formData.centre_name,
         status: formData.status,
         is_online: formData.is_online,
-      });
+      }, formData.password);
       
       setShowSuccess(true);
       // Don't redirect immediately, show success message first
