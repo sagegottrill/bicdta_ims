@@ -57,7 +57,18 @@ export const signInWithEmail = async (email: string, password: string) => {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     return userCredential.user;
   } catch (error: any) {
-    throw new Error(error.message);
+    // Handle specific Firebase auth errors
+    if (error.code === 'auth/user-not-found') {
+      throw new Error('No account found with this email address.');
+    } else if (error.code === 'auth/wrong-password') {
+      throw new Error('Incorrect password. Please try again.');
+    } else if (error.code === 'auth/too-many-requests') {
+      throw new Error('Too many failed attempts. Please try again later.');
+    } else if (error.code === 'auth/network-request-failed') {
+      throw new Error('Network error. Please check your internet connection.');
+    } else {
+      throw new Error(error.message || 'Authentication failed. Please try again.');
+    }
   }
 };
 
@@ -86,6 +97,11 @@ export const getUserData = async (uid: string) => {
     }
     return null;
   } catch (error: any) {
+    // Handle offline errors gracefully
+    if (error.message.includes('offline') || error.message.includes('Failed to get document')) {
+      console.warn('⚠️ Firestore is offline, returning null for user data');
+      return null;
+    }
     throw new Error(error.message);
   }
 };

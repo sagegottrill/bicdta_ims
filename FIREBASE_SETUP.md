@@ -116,7 +116,7 @@ You can also create an admin user programmatically by temporarily modifying the 
 
 ## 9. Testing the Setup
 
-1. Start your development server: `npm run dev`
+1. Start your development server: `npm npm run dev`
 2. Test instructor signup:
    - Go to login page
    - Click "Create Instructor Account"
