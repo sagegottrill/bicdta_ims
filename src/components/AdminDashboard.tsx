@@ -51,16 +51,7 @@ const AdminDashboard: React.FC = () => {
     enrolled: trainees.filter(t => !t.passed && !t.failed && !t.not_sat_for_exams && !t.dropout).length
   };
 
-  const specialNeeds = {
-    pwd: trainees.filter(t => t.people_with_special_needs).length,
-    regular: trainees.filter(t => !t.people_with_special_needs).length
-  };
 
-  const contactInfo = {
-    withPhone: trainees.filter(t => t.phone_number).length,
-    withEmail: trainees.filter(t => t.email).length,
-    withNIN: trainees.filter(t => t.nin).length
-  };
 
   // Placeholder edit/delete handlers
   const handleEdit = (type: string, id: string) => alert(`Edit ${type} ${id}`);
@@ -669,40 +660,7 @@ const AdminDashboard: React.FC = () => {
                   </CardContent>
                 </Card>
 
-                {/* Special Needs & Contact Info */}
-                <Card className="border-0 shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-slate-800">
-                      <Target className="w-5 h-5 text-purple-600" />
-                      Special Needs & Contact
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between p-3 bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg border border-purple-200">
-                        <span className="font-medium text-slate-800">PWD Trainees</span>
-                        <div className="text-right">
-                          <div className="text-2xl font-bold text-purple-600">{specialNeeds.pwd}</div>
-                          <div className="text-sm text-slate-500">special needs</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg border border-blue-200">
-                        <span className="font-medium text-slate-800">With Phone</span>
-                        <div className="text-right">
-                          <div className="text-2xl font-bold text-blue-600">{contactInfo.withPhone}</div>
-                          <div className="text-sm text-slate-500">contactable</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between p-3 bg-gradient-to-r from-indigo-50 to-indigo-100 rounded-lg border border-indigo-200">
-                        <span className="font-medium text-slate-800">With NIN</span>
-                        <div className="text-right">
-                          <div className="text-2xl font-bold text-indigo-600">{contactInfo.withNIN}</div>
-                          <div className="text-sm text-slate-500">identified</div>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+
               </div>
 
               {/* Performance Metrics Grid */}

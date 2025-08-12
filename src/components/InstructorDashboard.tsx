@@ -77,16 +77,17 @@ const InstructorDashboard: React.FC = () => {
   ];
   const uniqueCohorts = [...new Set(trainees.map(t => t.cohort_number?.toString() || ''))].filter(cohort => cohort && cohort !== '0').sort();
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-slate-600">Loading data</p>
-        </div>
+  // Show skeleton loaders instead of blocking the entire dashboard
+  const SkeletonCard = () => (
+    <div className="bg-white rounded-lg p-6 animate-pulse">
+      <div className="h-4 bg-slate-200 rounded w-1/3 mb-4"></div>
+      <div className="space-y-3">
+        <div className="h-3 bg-slate-200 rounded"></div>
+        <div className="h-3 bg-slate-200 rounded w-2/3"></div>
+        <div className="h-3 bg-slate-200 rounded w-1/2"></div>
       </div>
-    );
-  }
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
@@ -180,8 +181,17 @@ const InstructorDashboard: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-blue-100 text-sm font-medium mb-1">Total Trainees</p>
-                    <p className="text-3xl font-bold">{filteredTrainees.length}</p>
-                    <p className="text-blue-100 text-xs mt-2">Across all centres</p>
+                    {loading ? (
+                      <div className="animate-pulse">
+                        <div className="h-8 bg-white/30 rounded w-16 mb-2"></div>
+                        <div className="h-3 bg-white/30 rounded w-24"></div>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-3xl font-bold">{filteredTrainees.length}</p>
+                        <p className="text-blue-100 text-xs mt-2">Across all centres</p>
+                      </>
+                    )}
                   </div>
                   <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
                     <Users className="w-6 h-6 text-white" />
@@ -195,8 +205,17 @@ const InstructorDashboard: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-green-100 text-sm font-medium mb-1">Passed</p>
-                    <p className="text-3xl font-bold">{filteredTrainees.filter(t => t.passed).length}</p>
-                    <p className="text-green-100 text-xs mt-2">Successful trainees</p>
+                    {loading ? (
+                      <div className="animate-pulse">
+                        <div className="h-8 bg-white/30 rounded w-12 mb-2"></div>
+                        <div className="h-3 bg-white/30 rounded w-28"></div>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-3xl font-bold">{filteredTrainees.filter(t => t.passed).length}</p>
+                        <p className="text-green-100 text-xs mt-2">Successful trainees</p>
+                      </>
+                    )}
                   </div>
                   <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
                     <CheckCircle className="w-6 h-6 text-white" />
@@ -210,8 +229,17 @@ const InstructorDashboard: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-red-100 text-sm font-medium mb-1">Failed</p>
-                    <p className="text-3xl font-bold">{filteredTrainees.filter(t => t.failed).length}</p>
-                    <p className="text-red-100 text-xs mt-2">Need retraining</p>
+                    {loading ? (
+                      <div className="animate-pulse">
+                        <div className="h-8 bg-white/30 rounded w-12 mb-2"></div>
+                        <div className="h-3 bg-white/30 rounded w-24"></div>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-3xl font-bold">{filteredTrainees.filter(t => t.failed).length}</p>
+                        <p className="text-red-100 text-xs mt-2">Need retraining</p>
+                      </>
+                    )}
                   </div>
                   <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
                     <X className="w-6 h-6 text-white" />
@@ -225,8 +253,17 @@ const InstructorDashboard: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-orange-100 text-sm font-medium mb-1">Special Needs</p>
-                    <p className="text-3xl font-bold">{filteredTrainees.filter(t => t.people_with_special_needs).length}</p>
-                    <p className="text-orange-100 text-xs mt-2">PWD trainees</p>
+                    {loading ? (
+                      <div className="animate-pulse">
+                        <div className="h-8 bg-white/30 rounded w-12 mb-2"></div>
+                        <div className="h-3 bg-white/30 rounded w-20"></div>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-3xl font-bold">{filteredTrainees.filter(t => t.people_with_special_needs).length}</p>
+                        <p className="text-orange-100 text-xs mt-2">PWD trainees</p>
+                      </>
+                    )}
                   </div>
                   <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
                     <Target className="w-6 h-6 text-white" />
@@ -431,7 +468,21 @@ const InstructorDashboard: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredTrainees.map((t, index) => (
+                {loading ? (
+                  // Show skeleton rows while loading
+                  Array.from({ length: 5 }).map((_, index) => (
+                    <tr key={`skeleton-${index}`} className="border-b border-slate-100">
+                      {Array.from({ length: 17 }).map((_, cellIndex) => (
+                        <td key={`skeleton-cell-${cellIndex}`} className="py-4 px-6">
+                          <div className="animate-pulse">
+                            <div className="h-4 bg-slate-200 rounded w-16"></div>
+                          </div>
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                ) : (
+                  filteredTrainees.map((t, index) => (
                   <tr key={t.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
                     <td className="py-4 px-6 text-slate-600">{t.serial_number || index + 1}</td>
                     <td className="py-4 px-6 font-medium text-slate-800">{t.id_number}</td>
