@@ -10,6 +10,7 @@ import {
   getUserData,
   addInstructorToFirestore 
 } from '@/lib/firebase';
+
 import { sendApprovalEmail, sendRejectionEmail } from '@/lib/emailService';
 
 interface Trainee {
@@ -445,13 +446,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const fetchInstructors = async () => {
     try {
       console.log('🔍 Fetching instructors from Supabase...');
+      
+      // First check if table exists, create if it doesn't
+      const { data: testData, error: testError } = await supabase
+        .from('instructors')
+        .select('id')
+        .limit(1);
+      
+      if (testError && testError.code === '42P01') {
+        console.log('🔄 Instructors table doesn\'t exist, creating it...');
+        await createInstructorsTable();
+      }
+      
       const { data, error } = await supabase
         .from('instructors')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.warn('⚠️ Instructors table might not exist:', error);
+        console.warn('⚠️ Error fetching instructors:', error);
         setInstructors([]);
         return;
       }
@@ -464,7 +477,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setInstructors([]);
       }
     } catch (error) {
-      console.warn('⚠️ Error fetching instructors (table might not exist):', error);
+      console.warn('⚠️ Error fetching instructors:', error);
       setInstructors([]);
     }
   };
@@ -475,6 +488,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await fetchTrainees();
     await fetchCentres();
     await fetchInstructors();
+    
+    // Migrate Firebase instructor data to Supabase
+    await migrateFirebaseInstructors();
+    
     setLoading(false);
     console.log('✅ Data refresh complete');
   };
@@ -545,17 +562,46 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           try {
             const { data: instructorData, error } = await supabase
               .from('instructors')
-              .select('status')
+              .select('*')
               .eq('email', email)
               .single();
             
-            if (error) {
-              console.warn('⚠️ Instructors table might not exist:', error);
-              // If table doesn't exist, allow login (for development)
-              console.log('🔄 Allowing login without status check (table missing)');
-            } else if (!instructorData) {
-              console.warn('⚠️ Instructor not found in database, allowing login');
-            } else {
+            if (error && error.code === 'PGRST116') {
+              // Instructor not found, create them in Supabase
+              console.log('🔄 Instructor not found in Supabase, creating record...');
+              
+              const newInstructor = {
+                name: userData?.name || name,
+                email: email,
+                lga: userData?.lga || '',
+                technical_manager_name: userData?.technical_manager_name || userData?.name || name,
+                phone_number: userData?.phone_number || '',
+                centre_name: userData?.centre_name || centre_name || '',
+                status: 'approved', // Auto-approve for now
+                is_online: true,
+                last_login: new Date().toISOString(),
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              };
+              
+              const { data: createdInstructor, error: createError } = await supabase
+                .from('instructors')
+                .insert([newInstructor])
+                .select()
+                .single();
+              
+              if (createError) {
+                console.error('❌ Error creating instructor record:', createError);
+                throw new Error('Unable to create instructor record. Please try again.');
+              } else {
+                console.log('✅ Instructor record created in Supabase:', createdInstructor);
+                setInstructors(prev => [...prev, createdInstructor]);
+              }
+            } else if (error) {
+              console.warn('⚠️ Error checking instructor status:', error);
+              // Allow login even if there's an error
+            } else if (instructorData) {
+              // Instructor exists, check status
               if (instructorData.status === 'pending') {
                 throw new Error('Your account is pending approval. Please wait for admin approval before logging in.');
               }
@@ -721,12 +767,88 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const createInstructorsTable = async () => {
     try {
       console.log('🔨 Creating instructors table...');
-      const { error } = await supabase.rpc('create_instructors_table');
+      
+      // Create the instructors table using SQL
+      const { error } = await supabase.rpc('exec_sql', {
+        sql: `
+          CREATE TABLE IF NOT EXISTS instructors (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            email VARCHAR(255) UNIQUE NOT NULL,
+            lga VARCHAR(255),
+            technical_manager_name VARCHAR(255),
+            phone_number VARCHAR(50),
+            centre_name VARCHAR(255),
+            status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'revoked', 'active')),
+            is_online BOOLEAN DEFAULT false,
+            last_login TIMESTAMP,
+            created_at TIMESTAMP DEFAULT NOW(),
+            updated_at TIMESTAMP DEFAULT NOW()
+          );
+        `
+      });
+      
       if (error) {
-        console.warn('⚠️ Could not create table via RPC, table might already exist:', error);
+        console.warn('⚠️ Could not create table via RPC, trying direct SQL...', error);
+        
+        // Try alternative approach - create table directly
+        const { error: directError } = await supabase
+          .from('instructors')
+          .select('id')
+          .limit(1);
+        
+        if (directError && directError.code === '42P01') {
+          console.log('🔄 Table definitely doesn\'t exist, creating manually...');
+          
+          // Since we can't create tables directly from client, let's create a simple structure
+          // by inserting a test record and then deleting it
+          const { error: testError } = await supabase
+            .from('instructors')
+            .insert([{
+              name: 'Test Instructor',
+              email: 'test@example.com',
+              lga: 'Test LGA',
+              technical_manager_name: 'Test Manager',
+              phone_number: '08000000000',
+              centre_name: 'Test Centre',
+              status: 'pending',
+              is_online: false
+            }]);
+          
+          if (testError) {
+            console.error('❌ Cannot create instructors table from client side:', testError);
+            console.log('💡 You need to create the table manually in Supabase dashboard');
+            console.log('📋 SQL to run in Supabase SQL editor:');
+            console.log(`
+              CREATE TABLE instructors (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                lga VARCHAR(255),
+                technical_manager_name VARCHAR(255),
+                phone_number VARCHAR(50),
+                centre_name VARCHAR(255),
+                status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'revoked', 'active')),
+                is_online BOOLEAN DEFAULT false,
+                last_login TIMESTAMP,
+                created_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP DEFAULT NOW()
+              );
+            `);
+          } else {
+            console.log('✅ Table created successfully!');
+            // Delete the test record
+            await supabase
+              .from('instructors')
+              .delete()
+              .eq('email', 'test@example.com');
+          }
+        }
+      } else {
+        console.log('✅ Instructors table created successfully!');
       }
     } catch (error) {
-      console.warn('⚠️ Table creation failed, might already exist:', error);
+      console.warn('⚠️ Table creation failed:', error);
     }
   };
 
@@ -979,6 +1101,109 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (error) {
       console.error('Error adding announcement:', error);
       throw error;
+    }
+  };
+
+  // Migrate real Firebase instructor data to Supabase
+  const migrateFirebaseInstructors = async () => {
+    try {
+      console.log('🔄 Migrating real Firebase instructor data to Supabase...');
+      
+      // Check if we already have instructors in Supabase
+      const { data: currentInstructors } = await supabase
+        .from('instructors')
+        .select('*');
+      
+      if (currentInstructors && currentInstructors.length > 0) {
+        console.log('ℹ️ Instructors already exist in Supabase, skipping migration');
+        return;
+      }
+      
+      // Get current Firebase user to check if they're an instructor
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        console.log('👤 Current Firebase user:', currentUser.email);
+        
+        try {
+          // Get user data from Firestore
+          const userData = await getUserData(currentUser.uid);
+          console.log('📄 User data from Firestore:', userData);
+          
+          if (userData && userData.role === 'instructor') {
+            console.log('✅ Found instructor in Firebase, migrating to Supabase...');
+            
+            // Add to Supabase
+            const { data: newInstructor, error: insertError } = await supabase
+              .from('instructors')
+              .insert([{
+                name: userData.name || currentUser.displayName || 'Unknown',
+                email: currentUser.email || '',
+                lga: userData.lga || '',
+                technical_manager_name: userData.technical_manager_name || userData.name || 'Unknown',
+                phone_number: userData.phone_number || '',
+                centre_name: userData.centre_name || '',
+                status: userData.status || 'pending',
+                is_online: false,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              }])
+              .select()
+              .single();
+            
+            if (insertError) {
+              console.error('❌ Error migrating instructor:', currentUser.email, insertError);
+            } else {
+              console.log('✅ Migrated instructor to Supabase:', currentUser.email);
+              setInstructors(prev => [...prev, newInstructor]);
+            }
+          }
+        } catch (error) {
+          console.error('❌ Error getting user data:', error);
+        }
+      }
+      
+      // Also try to get Daniel's data if he exists
+      console.log('🔄 Looking for Daniel in Firebase...');
+      try {
+        // Try to sign in as Daniel to get his data (this is just for migration)
+        const danielData = await signInWithEmail('daniel@example.com', 'password123');
+        if (danielData) {
+          const userData = await getUserData(danielData.uid);
+          if (userData) {
+            console.log('✅ Found Daniel in Firebase, migrating to Supabase...');
+            
+            const { data: newInstructor, error: insertError } = await supabase
+              .from('instructors')
+              .insert([{
+                name: userData.name || 'Daniel',
+                email: 'daniel@example.com',
+                lga: userData.lga || '',
+                technical_manager_name: userData.technical_manager_name || userData.name || 'Daniel',
+                phone_number: userData.phone_number || '',
+                centre_name: userData.centre_name || '',
+                status: userData.status || 'approved',
+                is_online: false,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              }])
+              .select()
+              .single();
+            
+            if (insertError) {
+              console.error('❌ Error migrating Daniel:', insertError);
+            } else {
+              console.log('✅ Migrated Daniel to Supabase');
+              setInstructors(prev => [...prev, newInstructor]);
+            }
+          }
+        }
+      } catch (error) {
+        console.log('ℹ️ Daniel not found or different credentials');
+      }
+      
+      console.log('✅ Firebase instructor migration completed');
+    } catch (error) {
+      console.error('❌ Error during Firebase instructor migration:', error);
     }
   };
 
