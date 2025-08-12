@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useAppContext } from '@/contexts/AppContext';
 import { useToast } from '@/hooks/use-toast';
 import { X } from 'lucide-react';
@@ -18,6 +19,8 @@ const TraineeForm: React.FC<TraineeFormProps> = ({ onClose, availableCentres = [
   const { addTrainee } = useAppContext();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
+    serial_number: '',
+    id_number: '',
     full_name: '',
     gender: '',
     date_of_birth: '',
@@ -25,16 +28,21 @@ const TraineeForm: React.FC<TraineeFormProps> = ({ onClose, availableCentres = [
     educational_background: '',
     employment_status: '',
     centre_name: '',
+
+    nin: '',
+    phone_number: '',
     cohort_number: '',
-    id_number: '',
-    address: '',
     learner_category: '',
+    email: '',
+    lga: '',
+    people_with_special_needs: false,
+    address: '',
   });
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.full_name || !formData.gender || !formData.age) {
+    if (!formData.full_name || !formData.gender || !formData.id_number) {
       toast({ title: 'Error', description: 'Please fill in all required fields', variant: 'destructive' });
       return;
     }
@@ -43,9 +51,9 @@ const TraineeForm: React.FC<TraineeFormProps> = ({ onClose, availableCentres = [
       await addTrainee({
         ...formData,
         centre_name: formData.centre_name?.toUpperCase(),
-        age: parseInt(formData.age),
+        age: parseInt(formData.age) || 0,
         cohort_number: parseInt(formData.cohort_number) || 1,
-        cohort_id: parseInt(formData.cohort_number) || 1,
+        serial_number: parseInt(formData.serial_number) || 0,
       });
       toast({ title: 'Success', description: 'Trainee enrolled successfully!' });
       onClose();
@@ -56,7 +64,7 @@ const TraineeForm: React.FC<TraineeFormProps> = ({ onClose, availableCentres = [
     }
   };
 
-  const handleChange = (field: string, value: string) => {
+  const handleChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -72,6 +80,50 @@ const TraineeForm: React.FC<TraineeFormProps> = ({ onClose, availableCentres = [
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="serial_number">Serial Number</Label>
+                <Input
+                  id="serial_number"
+                  value={formData.serial_number}
+                  onChange={(e) => handleChange('serial_number', e.target.value)}
+                  placeholder="Enter serial number"
+                  className="mt-1"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="id_number">ID Number *</Label>
+                <Input
+                  id="id_number"
+                  value={formData.id_number}
+                  onChange={(e) => handleChange('id_number', e.target.value)}
+                  placeholder="Enter ID number"
+                  className="mt-1"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="nin">NIN</Label>
+                <Input
+                  id="nin"
+                  value={formData.nin}
+                  onChange={(e) => handleChange('nin', e.target.value)}
+                  placeholder="Enter NIN"
+                  className="mt-1"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="phone_number">Phone Number</Label>
+                <Input
+                  id="phone_number"
+                  value={formData.phone_number}
+                  onChange={(e) => handleChange('phone_number', e.target.value)}
+                  placeholder="Enter phone number"
+                  className="mt-1"
+                />
+              </div>
+
               <div>
                 <Label htmlFor="full_name">Full Name *</Label>
                 <Input
@@ -108,7 +160,7 @@ const TraineeForm: React.FC<TraineeFormProps> = ({ onClose, availableCentres = [
               </div>
 
               <div>
-                <Label htmlFor="age">Age *</Label>
+                <Label htmlFor="age">Age</Label>
                 <Input
                   id="age"
                   type="number"
@@ -175,12 +227,46 @@ const TraineeForm: React.FC<TraineeFormProps> = ({ onClose, availableCentres = [
               </div>
 
               <div>
-                <Label htmlFor="id_number">ID Number</Label>
+                <Label htmlFor="nin">NIN</Label>
                 <Input
-                  id="id_number"
-                  value={formData.id_number}
-                  onChange={(e) => handleChange('id_number', e.target.value)}
-                  placeholder="Enter ID number"
+                  id="nin"
+                  value={formData.nin}
+                  onChange={(e) => handleChange('nin', e.target.value)}
+                  placeholder="Enter NIN"
+                  className="mt-1"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="phone_number">Phone Number</Label>
+                <Input
+                  id="phone_number"
+                  value={formData.phone_number}
+                  onChange={(e) => handleChange('phone_number', e.target.value)}
+                  placeholder="Enter phone number"
+                  className="mt-1"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => handleChange('email', e.target.value)}
+                  placeholder="Enter email"
+                  className="mt-1"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="lga">LGA</Label>
+                <Input
+                  id="lga"
+                  value={formData.lga}
+                  onChange={(e) => handleChange('lga', e.target.value)}
+                  placeholder="Enter LGA"
                   className="mt-1"
                 />
               </div>
@@ -198,6 +284,18 @@ const TraineeForm: React.FC<TraineeFormProps> = ({ onClose, availableCentres = [
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+
+
+            {/* Special Needs Section */}
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="people_with_special_needs"
+                checked={formData.people_with_special_needs}
+                onCheckedChange={(checked) => handleChange('people_with_special_needs', checked)}
+              />
+              <Label htmlFor="people_with_special_needs">People with Special Needs</Label>
             </div>
 
             <div>

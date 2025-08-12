@@ -4,19 +4,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAppContext } from '@/contexts/AppContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Users, LogOut, BarChart3, Download, Megaphone, Globe, Plus, TrendingUp, Building, GraduationCap, Target, Award, Activity, Clock, CheckCircle } from 'lucide-react';
+import { Users, LogOut, BarChart3, Download, Megaphone, Globe, Plus, TrendingUp, Building, GraduationCap, Target, Award, Activity, Clock, CheckCircle, X, User, Edit, XCircle, UserX } from 'lucide-react';
 import TraineeForm from './forms/TraineeForm';
 import ExportModal from './ExportModal';
+import CombinedReportsForm from './forms/CombinedReportsForm';
+import InstructorProfile from './InstructorProfile';
 
 const InstructorDashboard: React.FC = () => {
-  const { currentUser, logout, trainees, loading } = useAppContext();
+  const { currentUser, logout, trainees, loading, announcements, announcementsLoading } = useAppContext();
   const { t, language, setLanguage } = useLanguage();
   const [showTraineeForm, setShowTraineeForm] = useState(false);
-  const [announcements, setAnnouncements] = useState<string[]>([
-    "Welcome to BICTDA Information Management System! All instructors are required to attend the training session on Friday.",
-    "New trainees enrollment is now open for Cohort 4. Please ensure all documentation is complete.",
-    "Monthly progress reports are due by the end of this week. Please submit your center's data."
-  ]);
+  const [showReportsForm, setShowReportsForm] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedTrainee, setSelectedTrainee] = useState<any>(null);
   const [selectedCentre, setSelectedCentre] = useState<string>('all');
   const [selectedCohort, setSelectedCohort] = useState<string>('all');
 
@@ -46,15 +47,25 @@ const InstructorDashboard: React.FC = () => {
     return acc;
   }, {} as Record<string, number>);
 
-  // Filtered trainees based on selected filters
+  // Filtered trainees based on instructor's center and selected filters
   const filteredTrainees = trainees.filter(trainee => {
+    // First filter by instructor's center
+    if (currentUser?.role === 'instructor' && currentUser.centre_name) {
+      if (!trainee.centre_name?.toLowerCase().includes(currentUser.centre_name.toLowerCase())) {
+        return false;
+      }
+    }
+    
+    // Then apply additional filters
     const centreMatch = selectedCentre === 'all' || trainee.centre_name?.toUpperCase() === selectedCentre;
     const cohortMatch = selectedCohort === 'all' || trainee.cohort_number.toString() === selectedCohort;
     return centreMatch && cohortMatch;
   });
 
   // Get unique centres and cohorts for filter dropdowns
-  const uniqueCentres = [
+  const uniqueCentres = currentUser?.role === 'instructor' && currentUser.centre_name 
+    ? [currentUser.centre_name.toUpperCase()]
+    : [
             "DIKWA DIGITAL LITERACY CENTRE",
     "GAJIRAM ICT CENTER", 
     "GUBIO DIGITAL LITERACY CENTRE",
@@ -120,6 +131,15 @@ const InstructorDashboard: React.FC = () => {
                   <p className="text-sm font-medium text-slate-800">{currentUser?.name}</p>
                   <p className="text-xs text-slate-500">Instructor</p>
                 </div>
+                <div className="flex gap-1">
+                  <Button 
+                    onClick={() => setShowProfile(true)} 
+                    variant="ghost" 
+                    size="sm"
+                    className="text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg"
+                  >
+                    <User className="w-4 h-4" />
+                  </Button>
             <Button 
               onClick={logout} 
                   variant="ghost" 
@@ -128,6 +148,7 @@ const InstructorDashboard: React.FC = () => {
             >
               <LogOut className="w-4 h-4" />
             </Button>
+                </div>
               </div>
             </div>
           </div>
@@ -151,6 +172,71 @@ const InstructorDashboard: React.FC = () => {
           </div>
         </div>
 
+        {/* Statistics Overview */}
+        <div className="mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-blue-100 text-sm font-medium mb-1">Total Trainees</p>
+                    <p className="text-3xl font-bold">{filteredTrainees.length}</p>
+                    <p className="text-blue-100 text-xs mt-2">Across all centres</p>
+                  </div>
+                  <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                    <Users className="w-6 h-6 text-white" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-green-100 text-sm font-medium mb-1">Passed</p>
+                    <p className="text-3xl font-bold">{filteredTrainees.filter(t => t.passed).length}</p>
+                    <p className="text-green-100 text-xs mt-2">Successful trainees</p>
+                  </div>
+                  <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                    <CheckCircle className="w-6 h-6 text-white" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-red-500 to-red-600 text-white border-0 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-red-100 text-sm font-medium mb-1">Failed</p>
+                    <p className="text-3xl font-bold">{filteredTrainees.filter(t => t.failed).length}</p>
+                    <p className="text-red-100 text-xs mt-2">Need retraining</p>
+                  </div>
+                  <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                    <X className="w-6 h-6 text-white" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white border-0 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-orange-100 text-sm font-medium mb-1">Special Needs</p>
+                    <p className="text-3xl font-bold">{filteredTrainees.filter(t => t.people_with_special_needs).length}</p>
+                    <p className="text-orange-100 text-xs mt-2">PWD trainees</p>
+                  </div>
+                  <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                    <Target className="w-6 h-6 text-white" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 cursor-pointer" onClick={() => setShowTraineeForm(true)}>
@@ -168,6 +254,9 @@ const InstructorDashboard: React.FC = () => {
             </CardContent>
           </Card>
           
+          <ExportModal 
+            trainees={filteredTrainees}
+            trigger={
           <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white border-0 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 cursor-pointer">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -182,14 +271,16 @@ const InstructorDashboard: React.FC = () => {
               </div>
             </CardContent>
           </Card>
+            }
+          />
           
-          <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 cursor-pointer">
+          <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 cursor-pointer" onClick={() => setShowReportsForm(true)}>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-purple-100 text-sm font-medium mb-1">View Analytics</p>
-                  <p className="text-2xl font-bold">Reports</p>
-                  <p className="text-purple-100 text-xs mt-2">Performance data</p>
+                  <p className="text-purple-100 text-sm font-medium mb-1">Reports</p>
+                  <p className="text-2xl font-bold">Submit</p>
+                  <p className="text-purple-100 text-xs mt-2">Weekly & Monthly</p>
                 </div>
                 <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
                   <BarChart3 className="w-6 h-6 text-white" />
@@ -198,58 +289,62 @@ const InstructorDashboard: React.FC = () => {
             </CardContent>
           </Card>
           
-          <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white border-0 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 cursor-pointer">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-orange-100 text-sm font-medium mb-1">System Status</p>
-                  <p className="text-2xl font-bold">Online</p>
-                  <p className="text-orange-100 text-xs mt-2">All systems operational</p>
-                </div>
-                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                  <CheckCircle className="w-6 h-6 text-white" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+
         </div>
 
         {/* Announcements Section */}
         <div className="mb-8">
           <Card className="border-0 shadow-xl bg-gradient-to-r from-amber-50 to-orange-50">
             <CardHeader className="flex flex-row items-center gap-4 pb-4">
-              <div className="w-12 h-12 bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl flex items-center justify-center">
+              <div className="w-12 h-12 bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl flex items-center justify-center relative">
                 <Megaphone className="w-6 h-6 text-white" />
+                {announcements.length > 0 && (
+                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center animate-pulse">
+                    <span className="text-xs text-white font-bold">{announcements.length}</span>
+                  </div>
+                )}
               </div>
               <div>
-                <CardTitle className="text-slate-800 text-xl">Official Announcements</CardTitle>
+                <CardTitle className="text-slate-800 text-xl flex items-center gap-2">
+                  Official Announcements
+                  {announcements.length > 0 && (
+                    <span className="text-xs bg-green-500 text-white px-2 py-1 rounded-full animate-pulse">
+                      LIVE
+                    </span>
+                  )}
+                </CardTitle>
                 <p className="text-slate-600 text-sm">Important updates from BICTDA Administration</p>
-            </div>
-          </CardHeader>
+              </div>
+            </CardHeader>
           <CardContent>
-              <div className="space-y-4">
-                {announcements.length > 0 ? (
-                  announcements.map((a, i) => (
-                    <div key={i} className="bg-white/80 backdrop-blur-sm border-l-4 border-amber-400 p-4 rounded-xl text-slate-800 shadow-sm hover:shadow-md transition-shadow duration-200">
-                      <div className="flex items-start gap-3">
-                        <div className="w-2 h-2 bg-amber-400 rounded-full mt-2 flex-shrink-0"></div>
-                        <div className="flex-1">
-                          <p className="text-sm leading-relaxed">{a}</p>
-                          <p className="text-xs text-slate-500 mt-2 flex items-center gap-2">
-                            <span>Sent by Administrator</span>
-                            <span>•</span>
-                            <span>{new Date().toLocaleTimeString()}</span>
-                          </p>
-                        </div>
-                      </div>
-            </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8 text-slate-500">
-                    <Megaphone className="w-8 h-8 mx-auto mb-2 text-slate-400" />
-                    <p>No new announcements from administration</p>
+            <div className="space-y-4">
+              {announcementsLoading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500 mx-auto mb-4"></div>
+                  <p className="text-slate-500">Loading announcements...</p>
                 </div>
-                )}
+              ) : announcements.length > 0 ? (
+                announcements.map((a) => (
+                  <div key={a.id} className="bg-white/80 backdrop-blur-sm border-l-4 border-amber-400 p-4 rounded-xl text-slate-800 shadow-sm hover:shadow-md transition-shadow duration-200">
+                    <div className="flex items-start gap-3">
+                      <div className="w-2 h-2 bg-amber-400 rounded-full mt-2 flex-shrink-0"></div>
+                      <div className="flex-1">
+                        <p className="text-sm leading-relaxed">{a.message}</p>
+                        <p className="text-xs text-slate-500 mt-2 flex items-center gap-2">
+                          <span>Sent by {a.sender_name}</span>
+                          <span>•</span>
+                          <span>{new Date(a.created_at).toLocaleString()}</span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-slate-500">
+                  <Megaphone className="w-8 h-8 mx-auto mb-2 text-slate-400" />
+                  <p>No new announcements from administration</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -264,25 +359,8 @@ const InstructorDashboard: React.FC = () => {
                 <p className="text-slate-600 text-lg">Manage and monitor your digital literacy trainees</p>
               </div>
               <div className="flex gap-4">
-                <Button 
-                  onClick={() => setShowTraineeForm(true)} 
-                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg px-6 py-3 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105"
-                >
-                  <Plus className="w-5 h-5 mr-2" />
-                  Enroll New Trainee
-                </Button>
-                <ExportModal 
-                  trainees={filteredTrainees}
-                  trigger={
-                <Button 
-                  variant="outline" 
-                      className="border-slate-300 text-slate-700 hover:bg-slate-50 shadow-lg px-6 py-3 rounded-xl font-semibold transition-all duration-200"
-                >
-                      <Download className="w-5 h-5 mr-2" />
-                      Export Data
-                </Button>
-                  }
-                />
+
+
               </div>
             </div>
             
@@ -333,32 +411,107 @@ const InstructorDashboard: React.FC = () => {
             <table className="min-w-full">
               <thead>
                 <tr className="bg-gradient-to-r from-slate-50 to-blue-50 text-slate-800">
+                  <th className="py-4 px-6 text-left font-semibold">S/N</th>
+                  <th className="py-4 px-6 text-left font-semibold">ID Number</th>
                   <th className="py-4 px-6 text-left font-semibold">Full Name</th>
                   <th className="py-4 px-6 text-left font-semibold">Gender</th>
-                  <th className="py-4 px-6 text-left font-semibold">Age</th>
-                  <th className="py-4 px-6 text-left font-semibold">Training Centre</th>
-                  <th className="py-4 px-6 text-left font-semibold">Cohort</th>
+                  <th className="py-4 px-6 text-left font-semibold">Date of Birth</th>
+                  <th className="py-4 px-6 text-left font-semibold">Educational Background</th>
                   <th className="py-4 px-6 text-left font-semibold">Employment Status</th>
+                  <th className="py-4 px-6 text-left font-semibold">Centre</th>
+                  <th className="py-4 px-6 text-left font-semibold">NIN</th>
+                  <th className="py-4 px-6 text-left font-semibold">Phone</th>
+                  <th className="py-4 px-6 text-left font-semibold">Cohort</th>
+                  <th className="py-4 px-6 text-left font-semibold">Learner Group</th>
+                  <th className="py-4 px-6 text-left font-semibold">Email</th>
+                  <th className="py-4 px-6 text-left font-semibold">LGA</th>
+                  <th className="py-4 px-6 text-left font-semibold">Exam Status</th>
+                  <th className="py-4 px-6 text-left font-semibold">Special Needs</th>
+                  <th className="py-4 px-6 text-left font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredTrainees.map(t => (
+                {filteredTrainees.map((t, index) => (
                   <tr key={t.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                    <td className="py-4 px-6 text-slate-600">{t.serial_number || index + 1}</td>
+                    <td className="py-4 px-6 font-medium text-slate-800">{t.id_number}</td>
                     <td className="py-4 px-6 font-medium text-slate-800">{t.full_name}</td>
                     <td className="py-4 px-6 text-slate-600 capitalize">
                       {t.gender?.toLowerCase() === 'm' ? 'Male' : 
                        t.gender?.toLowerCase() === 'f' ? 'Female' : 
                        t.gender}
                     </td>
-                    <td className="py-4 px-6 text-slate-600">{t.age}</td>
+                    <td className="py-4 px-6 text-slate-600">{t.date_of_birth || '-'}</td>
+                    <td className="py-4 px-6 text-slate-600">{t.educational_background || '-'}</td>
+                    <td className="py-4 px-6 text-slate-600">
+                      {t.employment_status ? (
+                        <span className="px-2 py-1 bg-emerald-100 text-emerald-800 text-xs rounded-full capitalize">
+                          {t.employment_status.toLowerCase()}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">-</span>
+                      )}
+                    </td>
                     <td className="py-4 px-6 text-slate-600 font-medium">{t.centre_name?.toUpperCase()}</td>
+                    <td className="py-4 px-6 text-slate-600">{t.nin || '-'}</td>
+                    <td className="py-4 px-6 text-slate-600">{t.phone_number || '-'}</td>
                     <td className="py-4 px-6 text-slate-600">{t.cohort_number}</td>
-                    <td className="py-4 px-6 text-slate-600 capitalize">{t.employment_status}</td>
+                    <td className="py-4 px-6 text-slate-600">
+                      {t.learner_category ? (
+                        <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full capitalize">
+                          {t.learner_category.toLowerCase()}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">-</span>
+                      )}
+                    </td>
+                    <td className="py-4 px-6 text-slate-600">{t.email || '-'}</td>
+                    <td className="py-4 px-6 text-slate-600">{t.lga || '-'}</td>
+                    <td className="py-4 px-6">
+                      <div className="flex flex-wrap gap-1">
+                        {t.passed && (
+                          <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Passed</span>
+                        )}
+                        {t.failed && (
+                          <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">Failed</span>
+                        )}
+                        {t.not_sat_for_exams && (
+                          <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">Not Sat</span>
+                        )}
+                        {t.dropout && (
+                          <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">Dropout</span>
+                        )}
+                        {!t.passed && !t.failed && !t.not_sat_for_exams && !t.dropout && (
+                          <span className="text-slate-400 text-xs">-</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-4 px-6 text-slate-600">
+                      {t.people_with_special_needs ? (
+                        <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">PWD</span>
+                      ) : (
+                        <span className="text-slate-400">-</span>
+                      )}
+                    </td>
+                    <td className="py-4 px-6">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedTrainee(t);
+                          setShowEditModal(true);
+                        }}
+                        className="flex items-center gap-2 text-blue-600 border-blue-200 hover:bg-blue-50"
+                      >
+                        <Edit className="w-4 h-4" />
+                        Edit
+                      </Button>
+                    </td>
                   </tr>
                 ))}
                 {filteredTrainees.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="text-center py-12 text-slate-500">
+                    <td colSpan={18} className="text-center py-12 text-slate-500">
                       <div className="flex flex-col items-center gap-2">
                         <Users className="w-8 h-8 text-slate-400" />
                         <p>No trainees found for selected filters</p>
@@ -375,228 +528,137 @@ const InstructorDashboard: React.FC = () => {
         {/* Trainee Form Modal */}
         {showTraineeForm && <TraineeForm onClose={() => setShowTraineeForm(false)} availableCentres={uniqueCentres} />}
 
-        {/* Analytics Dashboard */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          {/* Centre Performance */}
-          <Card className="border-0 shadow-xl">
-                <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-slate-800">
-                <Building className="w-5 h-5 text-blue-600" />
-                Centre Performance Overview
-              </CardTitle>
-                </CardHeader>
-                <CardContent>
-              <div className="space-y-4">
-                {Object.entries(centreStats).map(([centre, count]) => (
-                  <div key={centre} className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-50 to-blue-50 rounded-lg border border-slate-200/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                      <span className="font-medium text-slate-800">{centre}</span>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-2xl font-bold text-blue-600">{count}</p>
-                      <p className="text-sm text-slate-500">Trainees</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-                </CardContent>
-              </Card>
 
-          {/* Gender Distribution */}
-          <Card className="border-0 shadow-xl">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-slate-800">
-                <Users className="w-5 h-5 text-emerald-600" />
-                Gender Distribution
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                {genderStats.map(gs => (
-                  <div key={gs.label} className="bg-gradient-to-r from-slate-50 to-emerald-50 border border-slate-200/50 rounded-lg p-4 text-center">
-                    <div className="text-3xl font-bold text-emerald-600 mb-1">{gs.count}</div>
-                    <div className="text-sm text-slate-600">{gs.label}</div>
-                    <div className="text-xs text-slate-500 mt-1">
-                      {trainees.length > 0 ? ((gs.count / trainees.length) * 100).toFixed(1) : 0}% of total
                     </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+
+      {/* Form Modals */}
+      {showTraineeForm && (
+        <TraineeForm onClose={() => setShowTraineeForm(false)} availableCentres={uniqueCentres} />
+      )}
+      {showReportsForm && (
+        <CombinedReportsForm onClose={() => setShowReportsForm(false)} />
+      )}
+      {showProfile && (
+        <InstructorProfile onClose={() => setShowProfile(false)} />
+      )}
+
+      {/* Edit Exam Status Modal */}
+      {showEditModal && selectedTrainee && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+                          <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-xl font-bold text-slate-800">Edit Learner Group</h3>
+                  <p className="text-slate-600 text-sm mt-1">{selectedTrainee.full_name}</p>
+                    </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowEditModal(false)}
+                className="text-slate-500 hover:text-slate-700"
+              >
+                <X className="w-5 h-5" />
+              </Button>
         </div>
 
-        {/* Advanced Analytics Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-          {/* Cohort Performance */}
-          <Card className="border-0 shadow-xl">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-slate-800">
-                <GraduationCap className="w-5 h-5 text-purple-600" />
-                Cohort Performance
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
               <div className="space-y-4">
-                {Object.entries(cohortStats).map(([cohort, count]) => (
-                  <div key={cohort} className="flex items-center justify-between p-3 bg-gradient-to-r from-slate-50 to-purple-50 rounded-lg border border-slate-200/50">
-                    <span className="font-medium text-slate-800">Cohort {cohort}</span>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-purple-600">{count}</div>
-                      <div className="text-sm text-slate-500">trainees</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+              {/* Exam Status Selection */}
+              <div>
+                <label className="text-sm font-semibold text-slate-700 mb-2 block">Exam Status</label>
+                <div className="grid grid-cols-2 gap-3">
+                <Button
+                  variant={selectedTrainee.passed ? "default" : "outline"}
+                  onClick={() => {
+                    setSelectedTrainee({
+                      ...selectedTrainee,
+                      passed: !selectedTrainee.passed,
+                      failed: false,
+                      not_sat_for_exams: false,
+                      dropout: false
+                    });
+                  }}
+                  className={`flex items-center gap-2 ${selectedTrainee.passed ? 'bg-green-600 hover:bg-green-700' : 'border-green-200 text-green-600 hover:bg-green-50'}`}
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  Passed
+                </Button>
 
-          {/* Employment Status */}
-          <Card className="border-0 shadow-xl">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-slate-800">
-                <Activity className="w-5 h-5 text-emerald-600" />
-                Employment Status
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-3 bg-gradient-to-r from-emerald-50 to-emerald-100 rounded-lg border border-emerald-200">
-                  <span className="font-medium text-slate-800">Employed</span>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-emerald-600">
-                      {trainees.filter(t => ['employed', 'emp'].includes(t.employment_status?.toLowerCase() || '')).length}
-                    </div>
-                    <div className="text-sm text-slate-500">trainees</div>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-gradient-to-r from-orange-50 to-orange-100 rounded-lg border border-orange-200">
-                  <span className="font-medium text-slate-800">Unemployed</span>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-orange-600">
-                      {trainees.filter(t => ['unemployed', 'unemp'].includes(t.employment_status?.toLowerCase() || '')).length}
-                    </div>
-                    <div className="text-sm text-slate-500">trainees</div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+                <Button
+                  variant={selectedTrainee.failed ? "default" : "outline"}
+                  onClick={() => {
+                    setSelectedTrainee({
+                      ...selectedTrainee,
+                      passed: false,
+                      failed: !selectedTrainee.failed,
+                      not_sat_for_exams: false,
+                      dropout: false
+                    });
+                  }}
+                  className={`flex items-center gap-2 ${selectedTrainee.failed ? 'bg-red-600 hover:bg-red-700' : 'border-red-200 text-red-600 hover:bg-red-50'}`}
+                >
+                  <XCircle className="w-4 h-4" />
+                  Failed
+                </Button>
 
-          {/* Education Background */}
-          <Card className="border-0 shadow-xl">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-slate-800">
-                <Target className="w-5 h-5 text-blue-600" />
-                Education Background
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg border border-blue-200">
-                  <span className="font-medium text-slate-800">Primary</span>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-blue-600">
-                      {trainees.filter(t => t.educational_background?.toLowerCase().includes('primary')).length}
-                    </div>
-                    <div className="text-sm text-slate-500">trainees</div>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg border border-purple-200">
-                  <span className="font-medium text-slate-800">Secondary</span>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-purple-600">
-                      {trainees.filter(t => t.educational_background?.toLowerCase().includes('secondary') || t.educational_background?.toLowerCase().includes('ssce')).length}
-                    </div>
-                    <div className="text-sm text-slate-500">trainees</div>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-gradient-to-r from-emerald-50 to-emerald-100 rounded-lg border border-emerald-200">
-                  <span className="font-medium text-slate-800">Tertiary</span>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-emerald-600">
-                      {trainees.filter(t => t.educational_background?.toLowerCase().includes('tertiary') || t.educational_background?.toLowerCase().includes('ond') || t.educational_background?.toLowerCase().includes('bsc')).length}
-                    </div>
-                    <div className="text-sm text-slate-500">trainees</div>
-                  </div>
-                </div>
+                <Button
+                  variant={selectedTrainee.not_sat_for_exams ? "default" : "outline"}
+                  onClick={() => {
+                    setSelectedTrainee({
+                      ...selectedTrainee,
+                      passed: false,
+                      failed: false,
+                      not_sat_for_exams: !selectedTrainee.not_sat_for_exams,
+                      dropout: false
+                    });
+                  }}
+                  className={`flex items-center gap-2 ${selectedTrainee.not_sat_for_exams ? 'bg-yellow-600 hover:bg-yellow-700' : 'border-yellow-200 text-yellow-600 hover:bg-yellow-50'}`}
+                >
+                  <Clock className="w-4 h-4" />
+                  Not Sat
+                </Button>
+
+                <Button
+                  variant={selectedTrainee.dropout ? "default" : "outline"}
+                  onClick={() => {
+                    setSelectedTrainee({
+                      ...selectedTrainee,
+                      passed: false,
+                      failed: false,
+                      not_sat_for_exams: false,
+                      dropout: !selectedTrainee.dropout
+                    });
+                  }}
+                  className={`flex items-center gap-2 ${selectedTrainee.dropout ? 'bg-orange-600 hover:bg-orange-700' : 'border-orange-200 text-orange-600 hover:bg-orange-50'}`}
+                >
+                  <UserX className="w-4 h-4" />
+                  Dropout
+                </Button>
               </div>
-            </CardContent>
-          </Card>
         </div>
 
-        {/* Performance Metrics */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          {/* Top Performing Centres */}
-          <Card className="border-0 shadow-xl">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-slate-800">
-                <Award className="w-5 h-5 text-emerald-600" />
-                Top Performing Centres
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {Object.entries(centreStats)
-                  .sort(([,a], [,b]) => (b as number) - (a as number))
-                  .slice(0, 5)
-                  .map(([centre, count], index) => (
-                    <div key={centre} className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-50 to-emerald-50 rounded-lg border border-slate-200/50">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg flex items-center justify-center text-white font-bold">
-                          {index + 1}
-                        </div>
-                        <span className="font-medium text-slate-800">{centre}</span>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-2xl font-bold text-emerald-600">{count}</p>
-                        <p className="text-sm text-slate-500">trainees</p>
-                      </div>
+            <div className="flex gap-3 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowEditModal(false)}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    // Here you would typically update the trainee in the database
+                    // For now, we'll just close the modal
+                    setShowEditModal(false);
+                  }}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700"
+                >
+                  Save Changes
+                </Button>
               </div>
-            ))}
+            </div>
           </div>
-            </CardContent>
-          </Card>
-
-          {/* Recent Activities */}
-          <Card className="border-0 shadow-xl">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-slate-800">
-                <Activity className="w-5 h-5 text-blue-600" />
-                Recent Activities
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-start gap-3 p-3 bg-gradient-to-r from-green-50 to-green-100 rounded-lg border border-green-200">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
-                  <div>
-                    <div className="font-medium text-slate-800">New trainees enrolled</div>
-                    <div className="text-sm text-slate-500">15 new trainees added this week</div>
-                  </div>
-                </div>
-                
-                <div className="flex items-start gap-3 p-3 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg border border-blue-200">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                  <div>
-                    <div className="font-medium text-slate-800">Training sessions completed</div>
-                    <div className="text-sm text-slate-500">25 sessions conducted this month</div>
-                  </div>
-                </div>
-                
-                <div className="flex items-start gap-3 p-3 bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg border border-purple-200">
-                  <div className="w-2 h-2 bg-purple-500 rounded-full mt-2"></div>
-                  <div>
-                    <div className="font-medium text-slate-800">Progress reports updated</div>
-                    <div className="text-sm text-slate-500">All centre reports submitted</div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </div>
-      </div>
+      )}
     </div>
   );
 };

@@ -3,20 +3,28 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAppContext } from '@/contexts/AppContext';
-import { BarChart3, Users, LogOut, TrendingUp, Download, Edit, Trash2, Brain, Settings, Megaphone, Globe, Building, GraduationCap, Award, Activity, Target, PieChart, MapPin, Clock, CheckCircle, Lightbulb } from 'lucide-react';
+import { BarChart3, Users, LogOut, TrendingUp, Download, Edit, Trash2, Brain, Settings, Megaphone, Globe, Building, GraduationCap, Award, Activity, Target, PieChart, MapPin, Clock, CheckCircle, Lightbulb, Shield, FileText } from 'lucide-react';
 import TraineeAnalysis from './admin/TraineeAnalysis';
 import CentreAnalysis from './admin/CentreAnalysis';
 import PredictiveAnalytics from './admin/PredictiveAnalytics';
+import CenterManagement from './admin/CenterManagement';
+import InstructorManagement from './admin/InstructorManagement';
+import ReportsManagement from './admin/ReportsManagement';
+import InstructorForm from './forms/InstructorForm';
+import CentreForm from './forms/CentreForm';
 
-type ActiveView = 'overview' | 'trainees' | 'centres' | 'analytics' | 'settings';
+
+type ActiveView = 'overview' | 'trainees' | 'instructors' | 'centres' | 'reports' | 'analytics' | 'settings';
 
 const AdminDashboard: React.FC = () => {
-  const { currentUser, logout, trainees, loading } = useAppContext();
+  const { currentUser, logout, trainees, loading, announcements, addAnnouncement, announcementsLoading } = useAppContext();
   const [activeView, setActiveView] = useState<ActiveView>('overview');
   const [showSettings, setShowSettings] = useState(false);
   const [announcement, setAnnouncement] = useState('');
-  const [announcements, setAnnouncements] = useState<string[]>([]);
   const [language, setLanguage] = useState<'en' | 'ha' | 'kr'>('en');
+  const [showInstructorForm, setShowInstructorForm] = useState(false);
+  const [showCentreForm, setShowCentreForm] = useState(false);
+
 
   // Analytics calculations
   const totalTrainees = trainees.length;
@@ -34,15 +42,40 @@ const AdminDashboard: React.FC = () => {
     unemployed: trainees.filter(t => ['unemployed', 'unemp'].includes(t.employment_status?.toLowerCase() || '')).length
   };
 
+  // New analytics for exam results and special needs
+  const examResults = {
+    passed: trainees.filter(t => t.passed).length,
+    failed: trainees.filter(t => t.failed).length,
+    notSat: trainees.filter(t => t.not_sat_for_exams).length,
+    dropout: trainees.filter(t => t.dropout).length,
+    enrolled: trainees.filter(t => !t.passed && !t.failed && !t.not_sat_for_exams && !t.dropout).length
+  };
+
+  const specialNeeds = {
+    pwd: trainees.filter(t => t.people_with_special_needs).length,
+    regular: trainees.filter(t => !t.people_with_special_needs).length
+  };
+
+  const contactInfo = {
+    withPhone: trainees.filter(t => t.phone_number).length,
+    withEmail: trainees.filter(t => t.email).length,
+    withNIN: trainees.filter(t => t.nin).length
+  };
+
   // Placeholder edit/delete handlers
   const handleEdit = (type: string, id: string) => alert(`Edit ${type} ${id}`);
   const handleDelete = (type: string, id: string) => alert(`Delete ${type} ${id}`);
 
   // Announcements
-  const handleAnnounce = () => {
+  const handleAnnounce = async () => {
     if (announcement.trim()) {
-      setAnnouncements(a => [announcement, ...a]);
-      setAnnouncement('');
+      try {
+        await addAnnouncement(announcement);
+        setAnnouncement('');
+      } catch (error) {
+        console.error('Error sending announcement:', error);
+        alert('Failed to send announcement. Please try again.');
+      }
     }
   };
 
@@ -121,6 +154,20 @@ const AdminDashboard: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-4xl font-bold mb-3">Welcome back, {currentUser?.name} 👋</h2>
+                <div className="flex items-center gap-6 text-white/90">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4" />
+                    <span className="text-sm">12 Weeks Active</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4" />
+                    <span className="text-sm">45 Trainees</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
+                    <span className="text-sm">24 Reports</span>
+                  </div>
+                </div>
               </div>
               <div className="hidden md:block">
                 <div className="w-32 h-32 bg-white/20 rounded-full flex items-center justify-center">
@@ -137,11 +184,23 @@ const AdminDashboard: React.FC = () => {
         <div className="mb-8">
           <Card className="border-0 shadow-xl bg-gradient-to-r from-amber-50 to-orange-50">
             <CardHeader className="flex flex-row items-center gap-4 pb-4">
-              <div className="w-12 h-12 bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl flex items-center justify-center">
+              <div className="w-12 h-12 bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl flex items-center justify-center relative">
                 <Megaphone className="w-6 h-6 text-white" />
+                {announcements.length > 0 && (
+                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center animate-pulse">
+                    <span className="text-xs text-white font-bold">{announcements.length}</span>
+                  </div>
+                )}
               </div>
               <div>
-                <CardTitle className="text-slate-800 text-xl">Administrative Announcements</CardTitle>
+                <CardTitle className="text-slate-800 text-xl flex items-center gap-2">
+                  Administrative Announcements
+                  {announcements.length > 0 && (
+                    <span className="text-xs bg-green-500 text-white px-2 py-1 rounded-full animate-pulse">
+                      LIVE
+                    </span>
+                  )}
+                </CardTitle>
                 <p className="text-slate-600 text-sm">Broadcast messages to all instructors and centres</p>
               </div>
             </CardHeader>
@@ -163,17 +222,22 @@ const AdminDashboard: React.FC = () => {
                   </Button>
                 </div>
                 <div className="space-y-3">
-                  {announcements.length > 0 ? (
-                    announcements.map((a, i) => (
-                      <div key={i} className="bg-white/80 backdrop-blur-sm border-l-4 border-amber-400 p-4 rounded-xl text-slate-800 shadow-sm hover:shadow-md transition-shadow duration-200">
+                  {announcementsLoading ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500 mx-auto mb-4"></div>
+                      <p className="text-slate-500">Loading announcements...</p>
+                    </div>
+                  ) : announcements.length > 0 ? (
+                    announcements.map((a) => (
+                      <div key={a.id} className="bg-white/80 backdrop-blur-sm border-l-4 border-amber-400 p-4 rounded-xl text-slate-800 shadow-sm hover:shadow-md transition-shadow duration-200">
                         <div className="flex items-start gap-3">
                           <div className="w-2 h-2 bg-amber-400 rounded-full mt-2 flex-shrink-0"></div>
                           <div className="flex-1">
-                            <p className="text-sm leading-relaxed">{a}</p>
+                            <p className="text-sm leading-relaxed">{a.message}</p>
                             <p className="text-xs text-slate-500 mt-2 flex items-center gap-2">
-                              <span>Sent by Administrator</span>
+                              <span>Sent by {a.sender_name}</span>
                               <span>•</span>
-                              <span>{new Date().toLocaleTimeString()}</span>
+                              <span>{new Date(a.created_at).toLocaleString()}</span>
                             </p>
                           </div>
                         </div>
@@ -191,8 +255,37 @@ const AdminDashboard: React.FC = () => {
           </Card>
         </div>
 
+        {/* Quick Actions */}
+        <div className="mb-8">
+          <Card className="border-0 shadow-xl bg-gradient-to-r from-emerald-50 to-teal-50">
+            <CardHeader>
+              <CardTitle className="text-slate-800 text-xl flex items-center gap-2">
+                Quick Actions
+              </CardTitle>
+              <p className="text-slate-600 text-sm">Manage instructors, centres, and reports</p>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Button 
+                  onClick={() => setShowInstructorForm(true)}
+                  className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
+                >
+                  Register Instructor
+                </Button>
+                <Button 
+                  onClick={() => setShowCentreForm(true)}
+                  className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white"
+                >
+                  Add Centre
+                </Button>
+
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Navigation Menu */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
           <Card 
             className={`cursor-pointer transition-all duration-300 transform hover:-translate-y-1 ${
               activeView === 'overview' 
@@ -249,6 +342,33 @@ const AdminDashboard: React.FC = () => {
 
           <Card 
             className={`cursor-pointer transition-all duration-300 transform hover:-translate-y-1 ${
+              activeView === 'instructors' 
+                ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-xl' 
+                : 'bg-white shadow-lg hover:shadow-xl border-slate-200 hover:border-indigo-200'
+            }`}
+            onClick={() => setActiveView('instructors')}
+          >
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-200 ${
+                  activeView === 'instructors' ? 'bg-white/20' : 'bg-indigo-100'
+                }`}>
+                  <Shield className={`w-6 h-6 ${activeView === 'instructors' ? 'text-white' : 'text-indigo-600'}`} />
+                </div>
+                <div>
+                  <h3 className={`font-semibold ${activeView === 'instructors' ? 'text-white' : 'text-slate-800'}`}>
+                    Instructors
+                  </h3>
+                  <p className={`text-sm ${activeView === 'instructors' ? 'text-indigo-100' : 'text-slate-600'}`}>
+                    Manage instructors
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card 
+            className={`cursor-pointer transition-all duration-300 transform hover:-translate-y-1 ${
               activeView === 'centres' 
                 ? 'bg-gradient-to-br from-purple-500 to-purple-600 text-white shadow-xl' 
                 : 'bg-white shadow-lg hover:shadow-xl border-slate-200 hover:border-purple-200'
@@ -268,6 +388,33 @@ const AdminDashboard: React.FC = () => {
                   </h3>
                   <p className={`text-sm ${activeView === 'centres' ? 'text-purple-100' : 'text-slate-600'}`}>
                     Centre performance
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card 
+            className={`cursor-pointer transition-all duration-300 transform hover:-translate-y-1 ${
+              activeView === 'reports' 
+                ? 'bg-gradient-to-br from-teal-500 to-teal-600 text-white shadow-xl' 
+                : 'bg-white shadow-lg hover:shadow-xl border-slate-200 hover:border-teal-200'
+            }`}
+            onClick={() => setActiveView('reports')}
+          >
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-200 ${
+                  activeView === 'reports' ? 'bg-white/20' : 'bg-teal-100'
+                }`}>
+                  <FileText className={`w-6 h-6 ${activeView === 'reports' ? 'text-white' : 'text-teal-600'}`} />
+                </div>
+                <div>
+                  <h3 className={`font-semibold ${activeView === 'reports' ? 'text-white' : 'text-slate-800'}`}>
+                    Reports
+                  </h3>
+                  <p className={`text-sm ${activeView === 'reports' ? 'text-teal-100' : 'text-slate-600'}`}>
+                    View all reports
                   </p>
                 </div>
               </div>
@@ -306,6 +453,37 @@ const AdminDashboard: React.FC = () => {
         <div className="bg-white rounded-2xl shadow-xl border border-slate-200/50 overflow-hidden">
           {activeView === 'overview' && (
             <div className="p-8">
+              {/* Real-Time System Status */}
+              <div className="mb-8">
+                <Card className="border-0 shadow-lg bg-gradient-to-r from-green-50 to-emerald-50">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-slate-800">
+                      <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                      Live System Status
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="text-center p-4 bg-white rounded-lg shadow-sm border border-green-200">
+                        <div className="text-3xl font-bold text-blue-600 mb-2">12</div>
+                        <div className="text-sm font-medium text-slate-700">Weeks Active</div>
+                        <div className="text-xs text-slate-500 mt-1">System running smoothly</div>
+                      </div>
+                      <div className="text-center p-4 bg-white rounded-lg shadow-sm border border-emerald-200">
+                        <div className="text-3xl font-bold text-emerald-600 mb-2">45</div>
+                        <div className="text-sm font-medium text-slate-700">Trainees</div>
+                        <div className="text-xs text-slate-500 mt-1">Currently enrolled</div>
+                      </div>
+                      <div className="text-center p-4 bg-white rounded-lg shadow-sm border border-purple-200">
+                        <div className="text-3xl font-bold text-purple-600 mb-2">24</div>
+                        <div className="text-sm font-medium text-slate-700">Reports</div>
+                        <div className="text-xs text-slate-500 mt-1">Submitted this month</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
               {/* Comprehensive Analytics Grid */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
                 {/* Gender Distribution */}
@@ -365,8 +543,43 @@ const AdminDashboard: React.FC = () => {
                 </Card>
               </div>
 
-              {/* Advanced Analytics Grid */}
+              {/* Real-Time System Statistics */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+                {/* System Performance Overview */}
+                <Card className="border-0 shadow-lg bg-gradient-to-r from-blue-50 to-indigo-50">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-slate-800">
+                      <Clock className="w-5 h-5 text-blue-600" />
+                      System Performance
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-blue-200 shadow-sm">
+                        <span className="font-medium text-slate-800">Weeks Active</span>
+                        <div className="text-right">
+                          <div className="text-2xl font-bold text-blue-600">12</div>
+                          <div className="text-sm text-slate-500">since launch</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-emerald-200 shadow-sm">
+                        <span className="font-medium text-slate-800">Total Trainees</span>
+                        <div className="text-right">
+                          <div className="text-2xl font-bold text-emerald-600">45</div>
+                          <div className="text-sm text-slate-500">enrolled</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-purple-200 shadow-sm">
+                        <span className="font-medium text-slate-800">Reports Submitted</span>
+                        <div className="text-right">
+                          <div className="text-2xl font-bold text-purple-600">24</div>
+                          <div className="text-sm text-slate-500">this month</div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
                 {/* Centre Performance Overview */}
                 <Card className="border-0 shadow-lg">
                   <CardHeader>
@@ -402,70 +615,70 @@ const AdminDashboard: React.FC = () => {
                   </CardContent>
                 </Card>
 
-                {/* Cohort Analysis */}
+                {/* Exam Results Overview */}
                 <Card className="border-0 shadow-lg">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-slate-800">
-                      <GraduationCap className="w-5 h-5 text-blue-600" />
-                      Cohort Analysis
+                      <Award className="w-5 h-5 text-green-600" />
+                      Exam Results
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      <div className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg border border-blue-200">
-                        <span className="font-medium text-slate-800">Active Cohorts</span>
+                      <div className="flex items-center justify-between p-3 bg-gradient-to-r from-green-50 to-green-100 rounded-lg border border-green-200">
+                        <span className="font-medium text-slate-800">Passed</span>
                         <div className="text-right">
-                          <div className="text-2xl font-bold text-blue-600">{totalCohorts}</div>
-                          <div className="text-sm text-slate-500">running</div>
+                          <div className="text-2xl font-bold text-green-600">{examResults.passed}</div>
+                          <div className="text-sm text-slate-500">successful</div>
                         </div>
                       </div>
-                      <div className="flex items-center justify-between p-3 bg-gradient-to-r from-green-50 to-green-100 rounded-lg border border-green-200">
-                        <span className="font-medium text-slate-800">Avg Cohort Size</span>
+                      <div className="flex items-center justify-between p-3 bg-gradient-to-r from-red-50 to-red-100 rounded-lg border border-red-200">
+                        <span className="font-medium text-slate-800">Failed</span>
                         <div className="text-right">
-                          <div className="text-2xl font-bold text-green-600">{totalCohorts > 0 ? Math.round(totalTrainees / totalCohorts) : 0}</div>
-                          <div className="text-sm text-slate-500">trainees</div>
+                          <div className="text-2xl font-bold text-red-600">{examResults.failed}</div>
+                          <div className="text-sm text-slate-500">need retraining</div>
                         </div>
                       </div>
                       <div className="flex items-center justify-between p-3 bg-gradient-to-r from-orange-50 to-orange-100 rounded-lg border border-orange-200">
-                        <span className="font-medium text-slate-800">Success Rate</span>
+                        <span className="font-medium text-slate-800">Dropouts</span>
                         <div className="text-right">
-                          <div className="text-2xl font-bold text-orange-600">94%</div>
-                          <div className="text-sm text-slate-500">completion</div>
+                          <div className="text-2xl font-bold text-orange-600">{examResults.dropout}</div>
+                          <div className="text-sm text-slate-500">left program</div>
                         </div>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
 
-                {/* Education & Skills */}
+                {/* Special Needs & Contact Info */}
                 <Card className="border-0 shadow-lg">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-slate-800">
                       <Target className="w-5 h-5 text-purple-600" />
-                      Education & Skills
+                      Special Needs & Contact
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
                       <div className="flex items-center justify-between p-3 bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg border border-purple-200">
-                        <span className="font-medium text-slate-800">Digital Literacy</span>
+                        <span className="font-medium text-slate-800">PWD Trainees</span>
                         <div className="text-right">
-                          <div className="text-2xl font-bold text-purple-600">98%</div>
-                          <div className="text-sm text-slate-500">achieved</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between p-3 bg-gradient-to-r from-emerald-50 to-emerald-100 rounded-lg border border-emerald-200">
-                        <span className="font-medium text-slate-800">Skill Development</span>
-                        <div className="text-right">
-                          <div className="text-2xl font-bold text-emerald-600">92%</div>
-                          <div className="text-sm text-slate-500">improved</div>
+                          <div className="text-2xl font-bold text-purple-600">{specialNeeds.pwd}</div>
+                          <div className="text-sm text-slate-500">special needs</div>
                         </div>
                       </div>
                       <div className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg border border-blue-200">
-                        <span className="font-medium text-slate-800">Employment Ready</span>
+                        <span className="font-medium text-slate-800">With Phone</span>
                         <div className="text-right">
-                          <div className="text-2xl font-bold text-blue-600">89%</div>
-                          <div className="text-sm text-slate-500">prepared</div>
+                          <div className="text-2xl font-bold text-blue-600">{contactInfo.withPhone}</div>
+                          <div className="text-sm text-slate-500">contactable</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-gradient-to-r from-indigo-50 to-indigo-100 rounded-lg border border-indigo-200">
+                        <span className="font-medium text-slate-800">With NIN</span>
+                        <div className="text-right">
+                          <div className="text-2xl font-bold text-indigo-600">{contactInfo.withNIN}</div>
+                          <div className="text-sm text-slate-500">identified</div>
                         </div>
                       </div>
                     </div>
@@ -636,8 +849,22 @@ const AdminDashboard: React.FC = () => {
             <TraineeAnalysis handleEdit={handleEdit} handleDelete={handleDelete} />
           )}
 
+          {activeView === 'instructors' && (
+            <div className="p-8">
+              <InstructorManagement currentUser={currentUser} />
+            </div>
+          )}
+
           {activeView === 'centres' && (
-            <CentreAnalysis handleEdit={handleEdit} handleDelete={handleDelete} />
+            <div className="p-8">
+              <CenterManagement currentUser={currentUser} />
+            </div>
+          )}
+
+          {activeView === 'reports' && (
+            <div className="p-8">
+              <ReportsManagement currentUser={currentUser} />
+            </div>
           )}
 
           {activeView === 'analytics' && (
@@ -645,6 +872,15 @@ const AdminDashboard: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Form Modals */}
+      {showInstructorForm && (
+        <InstructorForm onClose={() => setShowInstructorForm(false)} />
+      )}
+      {showCentreForm && (
+        <CentreForm onClose={() => setShowCentreForm(false)} />
+      )}
+
     </div>
   );
 };

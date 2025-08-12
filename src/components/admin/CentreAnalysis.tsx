@@ -5,9 +5,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAppContext } from '@/contexts/AppContext';
 import { Edit, Trash2, Building, Users, TrendingUp, Target, Activity, MapPin, BarChart3, Award, CheckCircle, AlertTriangle, Globe, Clock, PieChart, Zap, Lightbulb, Rocket, Star, TrendingDown, ArrowUp, ArrowDown } from 'lucide-react';
+import CentreInfo from './CentreInfo';
 
 const CentreAnalysis: React.FC<{ handleEdit?: (type: string, id: string) => void, handleDelete?: (type: string, id: string) => void }> = ({ handleEdit, handleDelete }) => {
-  const { trainees } = useAppContext();
+  const { trainees, centres } = useAppContext();
 
   // Calculate centre statistics from trainees data
   const centreStats = trainees.reduce((acc, trainee) => {
@@ -61,7 +62,7 @@ const CentreAnalysis: React.FC<{ handleEdit?: (type: string, id: string) => void
   }, {} as Record<string, any>);
 
   // Calculate averages and convert to array
-  const centres = Object.values(centreStats).map(centre => ({
+  const centreStatsArray = Object.values(centreStats).map(centre => ({
     ...centre,
     avgAge: Math.round(centre.ageSum / centre.trainees),
     cohortCount: centre.cohorts.size,
@@ -71,11 +72,11 @@ const CentreAnalysis: React.FC<{ handleEdit?: (type: string, id: string) => void
 
   // Analytics calculations
   const totalCentres = centres.length;
-  const totalTrainees = centres.reduce((sum, centre) => sum + centre.trainees, 0);
+  const totalTrainees = centreStatsArray.reduce((sum, centre) => sum + centre.trainees, 0);
   const avgTraineesPerCentre = totalCentres > 0 ? Math.round(totalTrainees / totalCentres) : 0;
-  const highUtilizationCentres = centres.filter(centre => centre.trainees > 50).length;
-  const avgEmploymentRate = totalTrainees > 0 ? centres.reduce((sum, centre) => sum + centre.employedCount, 0) / totalTrainees * 100 : 0;
-  const avgEducationRate = totalTrainees > 0 ? centres.reduce((sum, centre) => sum + centre.primaryCount + centre.secondaryCount + centre.tertiaryCount, 0) / totalTrainees * 100 : 0;
+  const highUtilizationCentres = centreStatsArray.filter(centre => centre.trainees > 50).length;
+  const avgEmploymentRate = totalTrainees > 0 ? centreStatsArray.reduce((sum, centre) => sum + centre.employedCount, 0) / totalTrainees * 100 : 0;
+  const avgEducationRate = totalTrainees > 0 ? centreStatsArray.reduce((sum, centre) => sum + centre.primaryCount + centre.secondaryCount + centre.tertiaryCount, 0) / totalTrainees * 100 : 0;
 
   const getUtilizationColor = (traineeCount: number) => {
     if (traineeCount > 50) return 'bg-red-100 text-red-800 border-red-200';
@@ -98,6 +99,12 @@ const CentreAnalysis: React.FC<{ handleEdit?: (type: string, id: string) => void
 
   return (
     <div className="space-y-8">
+      {/* Centre Information from Database */}
+      <CentreInfo />
+      
+      {/* Centre Performance Analytics */}
+      <div className="border-t pt-8">
+        <h2 className="text-2xl font-bold text-slate-800 mb-6">Centre Performance Analytics</h2>
       {/* Premium Header Section */}
       <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 rounded-2xl p-8 text-white shadow-xl">
         <div className="flex items-center justify-between">
@@ -239,7 +246,7 @@ const CentreAnalysis: React.FC<{ handleEdit?: (type: string, id: string) => void
                 </div>
                 <div className="text-right">
                   <p className="text-2xl font-bold text-green-600">
-                    {centres.filter(c => c.trainees <= 30).length}
+                    {centreStatsArray.filter(c => c.trainees <= 30).length}
                   </p>
                   <p className="text-sm text-slate-500">centres</p>
                 </div>
@@ -252,7 +259,7 @@ const CentreAnalysis: React.FC<{ handleEdit?: (type: string, id: string) => void
                 </div>
                 <div className="text-right">
                   <p className="text-2xl font-bold text-yellow-600">
-                    {centres.filter(c => c.trainees > 30 && c.trainees <= 50).length}
+                    {centreStatsArray.filter(c => c.trainees > 30 && c.trainees <= 50).length}
                   </p>
                   <p className="text-sm text-slate-500">centres</p>
                 </div>
@@ -265,7 +272,7 @@ const CentreAnalysis: React.FC<{ handleEdit?: (type: string, id: string) => void
                 </div>
                 <div className="text-right">
                   <p className="text-2xl font-bold text-red-600">
-                    {centres.filter(c => c.trainees > 50).length}
+                    {centreStatsArray.filter(c => c.trainees > 50).length}
                   </p>
                   <p className="text-sm text-slate-500">centres</p>
                 </div>
@@ -430,6 +437,7 @@ const CentreAnalysis: React.FC<{ handleEdit?: (type: string, id: string) => void
           </div>
         </CardContent>
       </Card>
+      </div>
 
       {/* Detailed Centre Analytics */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

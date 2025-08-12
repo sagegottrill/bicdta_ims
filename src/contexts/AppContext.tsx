@@ -1,32 +1,143 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useToast } from '@/hooks/use-toast';
+import { 
+  auth, 
+  signUpWithEmail, 
+  signInWithEmail, 
+  signOutUser, 
+  onAuthStateChange, 
+  getUserData,
+  addInstructorToFirestore 
+} from '@/lib/firebase';
 
 interface Trainee {
   id: number;
-  cohort_id: number | null;
+  serial_number?: number;
+  id_number: string;
   full_name: string;
   gender: string;
   date_of_birth: string;
-  age: number;
+  age?: number;
   educational_background: string;
   employment_status: string;
-  address: string | null;
-  id_number: string;
   centre_name: string;
-  learner_category: string | null;
+  passed?: boolean;
+  failed?: boolean;
+  not_sat_for_exams?: boolean;
+  dropout?: boolean;
+  nin?: string;
+  phone_number?: string;
   cohort_number: number;
+  learner_category?: string;
+  email?: string;
+  lga?: string;
+  people_with_special_needs?: boolean;
+  address?: string | null;
+  created_at?: string;
+}
+
+interface Instructor {
+  id: number;
+  name: string;
+  lga: string;
+  technical_manager_name: string;
+  email: string;
+  phone_number: string;
+  centre_name?: string;
+  status: 'pending' | 'approved' | 'revoked' | 'active';
+  is_online: boolean;
+  last_login?: string;
+  created_at?: string;
+}
+
+interface Centre {
+  id: number;
+  centre_name: string;
+  lga: string;
+  technical_manager_name: string;
+  technical_manager_email: string;
+  contact_number: string;
+  declared_capacity: number;
+  usable_capacity: number;
+  computers_present: number;
+  computers_functional: number;
+  power_available: boolean;
+  power_condition: string;
+  internet_available: boolean;
+  fans_present: number;
+  air_condition_present: number;
+  fans_functional: number;
+  air_condition_functional: number;
+  lighting_available: boolean;
+  windows_condition: string;
+  water_functional: boolean;
+  created_at?: string;
+}
+
+interface WeeklyReport {
+  id: number;
+  centre_name: string;
+  technical_manager_name: string;
+  week_number: number;
+  year: number;
+  comments: string;
+  trainees_enrolled: number;
+  trainees_completed: number;
+  trainees_dropped: number;
+  created_at?: string;
+}
+
+interface MEReport {
+  id: number;
+  centre_name: string;
+  technical_manager_name: string;
+  month: number;
+  year: number;
+  comments: string;
+  total_enrollment: number;
+  total_completion: number;
+  total_dropout: number;
+  employment_rate: number;
+  created_at?: string;
+}
+
+interface Announcement {
+  id: string;
+  message: string;
+  sender_name: string;
+  sender_role: string;
+  created_at: string;
 }
 
 interface AppContextType {
   sidebarOpen: boolean;
   toggleSidebar: () => void;
-  currentUser: { role: 'instructor' | 'admin' | null; name: string } | null;
-  login: (role: 'instructor' | 'admin', name: string, email?: string) => Promise<boolean>;
+  currentUser: { role: 'instructor' | 'admin' | null; name: string; centre_name?: string } | null;
+  login: (role: 'instructor' | 'admin', name: string, email?: string, centre_name?: string, password?: string) => Promise<boolean>;
   logout: () => void;
   trainees: Trainee[];
+  instructors: Instructor[];
+  centres: Centre[];
+  weeklyReports: WeeklyReport[];
+  meReports: MEReport[];
   loading: boolean;
   addTrainee: (trainee: Omit<Trainee, 'id'>) => Promise<void>;
+  addInstructor: (instructor: Omit<Instructor, 'id'>) => Promise<void>;
+  updateInstructor: (id: number, instructor: Partial<Instructor>) => Promise<void>;
+  deleteInstructor: (id: number) => Promise<void>;
+  approveInstructor: (id: number) => Promise<void>;
+  revokeInstructor: (id: number) => Promise<void>;
+  addCentre: (centre: Omit<Centre, 'id'>) => Promise<void>;
+  updateCentre: (id: number, centre: Partial<Centre>) => Promise<void>;
+  addWeeklyReport: (report: Omit<WeeklyReport, 'id'>) => Promise<void>;
+  addMEReport: (report: Omit<MEReport, 'id'>) => Promise<void>;
   refreshData: () => Promise<void>;
+  getCentresByManager: (managerName: string) => Centre[];
+  getCentresByCentreName: (centreName: string) => Centre[];
+  announcements: Announcement[];
+  addAnnouncement: (message: string) => Promise<void>;
+  announcementsLoading: boolean;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -41,9 +152,16 @@ export const useAppContext = () => {
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState<{ role: 'instructor' | 'admin' | null; name: string } | null>(null);
+  const [currentUser, setCurrentUser] = useState<{ role: 'instructor' | 'admin' | null; name: string; email?: string; centre_name?: string } | null>(null);
   const [trainees, setTrainees] = useState<Trainee[]>([]);
+  const [instructors, setInstructors] = useState<Instructor[]>([]);
+  const [centres, setCentres] = useState<Centre[]>([]);
+  const [weeklyReports, setWeeklyReports] = useState<WeeklyReport[]>([]);
+  const [meReports, setMEReports] = useState<MEReport[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
+  const [announcementsLoading, setAnnouncementsLoading] = useState(true);
+  const { toast } = useToast();
 
   const toggleSidebar = () => setSidebarOpen(prev => !prev);
 
@@ -57,6 +175,76 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.log('🔍 Supabase connection test:', { data, error });
     });
   }, []);
+
+  // Fetch announcements from Supabase
+  const fetchAnnouncements = async () => {
+    try {
+      setAnnouncementsLoading(true);
+      console.log('🔍 Fetching announcements from Supabase...');
+      
+      const { data, error } = await supabase
+        .from('announcements')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) {
+        console.error('❌ Error fetching announcements:', error);
+        return;
+      }
+
+      console.log('✅ Announcements loaded:', data?.length || 0, 'records');
+      setAnnouncements(data || []);
+    } catch (error) {
+      console.error('❌ Error fetching announcements:', error);
+    } finally {
+      setAnnouncementsLoading(false);
+    }
+  };
+
+  // Set up real-time subscription for announcements
+  useEffect(() => {
+    console.log('🔔 Setting up real-time announcements subscription...');
+    
+    const channel = supabase
+      .channel('announcements')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'announcements'
+        },
+        (payload) => {
+          console.log('🔔 Real-time announcement update:', payload);
+          
+          if (payload.eventType === 'INSERT') {
+            const newAnnouncement = payload.new as Announcement;
+            setAnnouncements(prev => [newAnnouncement, ...prev]);
+            
+            // Show toast notification for new announcements
+            toast({
+              title: "New Announcement",
+              description: newAnnouncement.message,
+              duration: 5000,
+            });
+          } else if (payload.eventType === 'DELETE') {
+            setAnnouncements(prev => prev.filter(a => a.id !== payload.old.id));
+          } else if (payload.eventType === 'UPDATE') {
+            setAnnouncements(prev => prev.map(a => a.id === payload.new.id ? payload.new as Announcement : a));
+          }
+        }
+      )
+      .subscribe();
+
+    // Fetch initial announcements
+    fetchAnnouncements();
+
+    return () => {
+      console.log('🔔 Cleaning up announcements subscription...');
+      supabase.removeChannel(channel);
+    };
+  }, [toast]);
 
   // Fetch trainees from Supabase
   const fetchTrainees = async () => {
@@ -165,10 +353,64 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  // Fetch centres from Supabase
+  const fetchCentres = async () => {
+    try {
+      console.log('🔍 Fetching centres from Supabase...');
+      const { data, error } = await supabase
+        .from('centres')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('❌ Error fetching centres:', error);
+        return;
+      }
+
+      if (data) {
+        console.log('✅ Centres loaded:', data.length, 'records');
+        setCentres(data);
+      } else {
+        console.log('⚠️ No centre data returned from Supabase');
+        setCentres([]);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching centres:', error);
+    }
+  };
+
+  // Fetch instructors from Supabase
+  const fetchInstructors = async () => {
+    try {
+      console.log('🔍 Fetching instructors from Supabase...');
+      const { data, error } = await supabase
+        .from('instructors')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('❌ Error fetching instructors:', error);
+        return;
+      }
+
+      if (data) {
+        console.log('✅ Instructors loaded:', data.length, 'records');
+        setInstructors(data);
+      } else {
+        console.log('⚠️ No instructor data returned from Supabase');
+        setInstructors([]);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching instructors:', error);
+    }
+  };
+
   const refreshData = async () => {
     console.log('🔄 Refreshing data...');
     setLoading(true);
     await fetchTrainees();
+    await fetchCentres();
+    await fetchInstructors();
     setLoading(false);
     console.log('✅ Data refresh complete');
   };
@@ -179,17 +421,51 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     refreshData();
   }, []);
 
-  const login = async (role: 'instructor' | 'admin', name: string, email?: string) => {
-    // Simple demo login - accept any email for testing
-    if (role === 'admin' || role === 'instructor') {
-      setCurrentUser({ role, name });
-      return true;
+  const login = async (role: 'instructor' | 'admin', name: string, email?: string, centre_name?: string, password?: string) => {
+    try {
+      console.log('🔐 Attempting login for:', { role, name, email, centre_name });
+      
+      if (!email) {
+        throw new Error('Email is required for login');
+      }
+
+      if (!password) {
+        throw new Error('Password is required for login');
+      }
+
+      // Use Firebase authentication
+      const user = await signInWithEmail(email, password);
+      
+      if (user) {
+        // Get additional user data from Firestore
+        const userData = await getUserData(user.uid);
+        
+        setCurrentUser({ 
+          role, 
+          name: userData?.name || name, 
+          email: user.email || email, 
+          centre_name: userData?.centre_name || centre_name 
+        });
+        
+        console.log('✅ Login successful');
+        return true;
+      }
+      
+      return false;
+    } catch (error: any) {
+      console.error('❌ Login error:', error);
+      throw new Error(error.message);
     }
-    return false;
   };
 
-  const logout = () => {
-    setCurrentUser(null);
+  const logout = async () => {
+    try {
+      await signOutUser();
+      setCurrentUser(null);
+      console.log('✅ Logout successful');
+    } catch (error) {
+      console.error('❌ Logout error:', error);
+    }
   };
 
   // Add trainee to Supabase
@@ -209,6 +485,216 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  // Add instructor to Supabase and Firebase
+  const addInstructor = async (instructor: Omit<Instructor, 'id'>) => {
+    try {
+      // Create Firebase user account
+      const user = await signUpWithEmail(instructor.email, 'defaultPassword123', {
+        name: instructor.name,
+        lga: instructor.lga,
+        technical_manager_name: instructor.technical_manager_name,
+        phone_number: instructor.phone_number,
+        centre_name: instructor.centre_name,
+        role: 'instructor',
+        status: 'pending',
+        is_online: false
+      });
+
+      // Add to Supabase as well
+      const { data, error } = await supabase
+        .from('instructors')
+        .insert([instructor])
+        .select()
+        .single();
+      
+      if (error) throw error;
+      setInstructors(prev => [...prev, data]);
+      
+      console.log('✅ Instructor added successfully to both Firebase and Supabase');
+    } catch (error) {
+      console.error('Error adding instructor:', error);
+      throw error;
+    }
+  };
+
+  // Update instructor in Supabase
+  const updateInstructor = async (id: number, instructor: Partial<Instructor>) => {
+    try {
+      const { data, error } = await supabase
+        .from('instructors')
+        .update(instructor)
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      setInstructors(prev => prev.map(i => i.id === id ? data : i));
+    } catch (error) {
+      console.error('Error updating instructor:', error);
+      throw error;
+    }
+  };
+
+  // Delete instructor from Supabase
+  const deleteInstructor = async (id: number) => {
+    try {
+      const { error } = await supabase
+        .from('instructors')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+      setInstructors(prev => prev.filter(i => i.id !== id));
+    } catch (error) {
+      console.error('Error deleting instructor:', error);
+      throw error;
+    }
+  };
+
+  // Approve instructor
+  const approveInstructor = async (id: number) => {
+    try {
+      const { data, error } = await supabase
+        .from('instructors')
+        .update({ status: 'approved' })
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      setInstructors(prev => prev.map(i => i.id === id ? data : i));
+    } catch (error) {
+      console.error('Error approving instructor:', error);
+      throw error;
+    }
+  };
+
+  // Revoke instructor access
+  const revokeInstructor = async (id: number) => {
+    try {
+      const { data, error } = await supabase
+        .from('instructors')
+        .update({ status: 'revoked' })
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      setInstructors(prev => prev.map(i => i.id === id ? data : i));
+    } catch (error) {
+      console.error('Error revoking instructor:', error);
+      throw error;
+    }
+  };
+
+  // Add centre to Supabase
+  const addCentre = async (centre: Omit<Centre, 'id'>) => {
+    try {
+      const { data, error } = await supabase
+        .from('centres')
+        .insert([centre])
+        .select()
+        .single();
+      
+      if (error) throw error;
+      setCentres(prev => [...prev, data]);
+    } catch (error) {
+      console.error('Error adding centre:', error);
+      throw error;
+    }
+  };
+
+  // Update centre in Supabase
+  const updateCentre = async (id: number, centre: Partial<Centre>) => {
+    try {
+      const { data, error } = await supabase
+        .from('centres')
+        .update(centre)
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      setCentres(prev => prev.map(c => c.id === id ? data : c));
+    } catch (error) {
+      console.error('Error updating centre:', error);
+      throw error;
+    }
+  };
+
+  // Get centres by technical manager name
+  const getCentresByManager = (managerName: string): Centre[] => {
+    return centres.filter(centre => 
+      centre.technical_manager_name.toLowerCase().includes(managerName.toLowerCase())
+    );
+  };
+
+  // Get centres by centre name
+  const getCentresByCentreName = (centreName: string): Centre[] => {
+    return centres.filter(centre => 
+      centre.centre_name.toLowerCase().includes(centreName.toLowerCase())
+    );
+  };
+
+  // Add weekly report to Supabase
+  const addWeeklyReport = async (report: Omit<WeeklyReport, 'id'>) => {
+    try {
+      const { data, error } = await supabase
+        .from('weekly_reports')
+        .insert([report])
+        .select()
+        .single();
+      
+      if (error) throw error;
+      setWeeklyReports(prev => [...prev, data]);
+    } catch (error) {
+      console.error('Error adding weekly report:', error);
+      throw error;
+    }
+  };
+
+  // Add M&E report to Supabase
+  const addMEReport = async (report: Omit<MEReport, 'id'>) => {
+    try {
+      const { data, error } = await supabase
+        .from('me_reports')
+        .insert([report])
+        .select()
+        .single();
+      
+      if (error) throw error;
+      setMEReports(prev => [...prev, data]);
+    } catch (error) {
+      console.error('Error adding M&E report:', error);
+      throw error;
+    }
+  };
+
+  // Add announcement to Supabase
+  const addAnnouncement = async (message: string) => {
+    if (!currentUser) {
+      throw new Error('User not logged in');
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('announcements')
+        .insert([{
+          message,
+          sender_name: currentUser.name,
+          sender_role: currentUser.role
+        }])
+        .select()
+        .single();
+      
+      if (error) throw error;
+      console.log('✅ Announcement added:', data);
+    } catch (error) {
+      console.error('Error adding announcement:', error);
+      throw error;
+    }
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -218,9 +704,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         login,
         logout,
         trainees,
+        instructors,
+        centres,
+        weeklyReports,
+        meReports,
         loading,
         addTrainee,
-        refreshData
+        addInstructor,
+        updateInstructor,
+        deleteInstructor,
+        approveInstructor,
+        revokeInstructor,
+        addCentre,
+        updateCentre,
+        addWeeklyReport,
+        addMEReport,
+        refreshData,
+        getCentresByManager,
+        getCentresByCentreName,
+        announcements,
+        addAnnouncement,
+        announcementsLoading
       }}
     >
       {children}

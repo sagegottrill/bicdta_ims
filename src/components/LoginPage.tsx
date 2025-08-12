@@ -8,17 +8,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAppContext } from '@/contexts/AppContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { GraduationCap, Shield, Building2, Users, BookOpen, Globe, Sparkles, Eye, EyeOff, CheckCircle, AlertCircle, Loader2, ArrowRight, Zap, Target, Award } from 'lucide-react';
+import { GraduationCap, Shield, Building2, Users, BookOpen, Globe, Sparkles, Eye, EyeOff, CheckCircle, AlertCircle, Loader2, ArrowRight, Zap, Target, Award, UserPlus } from 'lucide-react';
+import InstructorSignup from './InstructorSignup';
 
 const LoginPage: React.FC = () => {
   const { login } = useAppContext();
   const { t, language, setLanguage } = useLanguage();
   const [adminEmail, setAdminEmail] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
   const [instructorEmail, setInstructorEmail] = useState('');
+  const [instructorPassword, setInstructorPassword] = useState('');
   const [activeTab, setActiveTab] = useState('admin');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showSignup, setShowSignup] = useState(false);
   const navigate = useNavigate();
 
   const handleAdminLogin = async (e: React.FormEvent) => {
@@ -27,14 +31,14 @@ const LoginPage: React.FC = () => {
     setError('');
     
     try {
-      const success = await login('admin', 'Admin User', adminEmail);
+      const success = await login('admin', 'Admin User', adminEmail, undefined, adminPassword);
       if (success) {
         navigate('/');
       } else {
         setError('Login failed. Please try again.');
       }
-    } catch (err) {
-      setError('Login failed. Please try again.');
+    } catch (err: any) {
+      setError(err.message || 'Login failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -46,18 +50,23 @@ const LoginPage: React.FC = () => {
     setError('');
     
     try {
-      const success = await login('instructor', 'John Instructor', instructorEmail);
+      const success = await login('instructor', 'Instructor', instructorEmail, undefined, instructorPassword);
       if (success) {
         navigate('/');
       } else {
         setError('Login failed. Please try again.');
       }
-    } catch (err) {
-      setError('Login failed. Please try again.');
+    } catch (err: any) {
+      setError(err.message || 'Login failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Show signup form if requested
+  if (showSignup) {
+    return <InstructorSignup onBackToLogin={() => setShowSignup(false)} />;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 relative overflow-hidden">
@@ -201,7 +210,7 @@ const LoginPage: React.FC = () => {
                             type="email"
                             value={adminEmail}
                             onChange={(e) => setAdminEmail(e.target.value)}
-                            placeholder="admin.user@bictda.bo.gov.ng"
+                            placeholder="Enter your email"
                             className="w-full px-3 py-2 border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                             required
                           />
@@ -219,6 +228,8 @@ const LoginPage: React.FC = () => {
                           <Input
                             id="admin-password"
                             type={showPassword ? "text" : "password"}
+                            value={adminPassword}
+                            onChange={(e) => setAdminPassword(e.target.value)}
                             placeholder="Enter your password"
                             className="w-full px-3 py-2 pr-10 border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                             required
@@ -265,7 +276,7 @@ const LoginPage: React.FC = () => {
                             type="email"
                             value={instructorEmail}
                             onChange={(e) => setInstructorEmail(e.target.value)}
-                            placeholder="instructor@bictda.bo.gov.ng"
+                            placeholder="Enter your email"
                             className="w-full px-3 py-2 border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200"
                             required
                           />
@@ -283,6 +294,8 @@ const LoginPage: React.FC = () => {
                           <Input
                             id="instructor-password"
                             type={showPassword ? "text" : "password"}
+                            value={instructorPassword}
+                            onChange={(e) => setInstructorPassword(e.target.value)}
                             placeholder="Enter your password"
                             className="w-full px-3 py-2 pr-10 border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-200"
                             required
@@ -315,6 +328,20 @@ const LoginPage: React.FC = () => {
                         )}
                       </Button>
                     </form>
+                    
+                    {/* Sign Up Option */}
+                    <div className="text-center pt-4 border-t border-slate-200">
+                      <p className="text-sm text-slate-600 mb-3">New instructor?</p>
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        onClick={() => setShowSignup(true)}
+                        className="w-full border-emerald-200 text-emerald-600 hover:bg-emerald-50 hover:border-emerald-300 transition-all duration-200"
+                      >
+                        <UserPlus className="w-4 h-4 mr-2" />
+                        Create Instructor Account
+                      </Button>
+                    </div>
                   </TabsContent>
                 </Tabs>
               </CardContent>

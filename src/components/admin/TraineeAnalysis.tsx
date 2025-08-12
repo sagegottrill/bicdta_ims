@@ -219,21 +219,31 @@ const TraineeAnalysis: React.FC<{ handleEdit?: (type: string, id: string) => voi
             <Table>
               <TableHeader>
                 <TableRow className="bg-gradient-to-r from-slate-50 to-blue-50 text-slate-800">
+                  <TableHead className="py-4 px-6 text-left font-semibold">S/N</TableHead>
+                  <TableHead className="py-4 px-6 text-left font-semibold">ID Number</TableHead>
                   <TableHead className="py-4 px-6 text-left font-semibold">Full Name</TableHead>
-                  <TableHead className="py-4 px-6 text-left font-semibold">Age</TableHead>
                   <TableHead className="py-4 px-6 text-left font-semibold">Gender</TableHead>
+                  <TableHead className="py-4 px-6 text-left font-semibold">Date of Birth</TableHead>
                   <TableHead className="py-4 px-6 text-left font-semibold">Education</TableHead>
                   <TableHead className="py-4 px-6 text-left font-semibold">Employment</TableHead>
                   <TableHead className="py-4 px-6 text-left font-semibold">Training Centre</TableHead>
+                  <TableHead className="py-4 px-6 text-left font-semibold">NIN</TableHead>
+                  <TableHead className="py-4 px-6 text-left font-semibold">Phone</TableHead>
                   <TableHead className="py-4 px-6 text-left font-semibold">Cohort</TableHead>
+                  <TableHead className="py-4 px-6 text-left font-semibold">Learner Group</TableHead>
+                  <TableHead className="py-4 px-6 text-left font-semibold">Email</TableHead>
+                  <TableHead className="py-4 px-6 text-left font-semibold">LGA</TableHead>
+                  <TableHead className="py-4 px-6 text-left font-semibold">Exam Status</TableHead>
+                  <TableHead className="py-4 px-6 text-left font-semibold">Special Needs</TableHead>
                   <TableHead className="py-4 px-6 text-left font-semibold">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredTrainees.map((trainee) => (
+                {filteredTrainees.map((trainee, index) => (
                   <TableRow key={trainee.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                    <TableCell className="py-4 px-6 text-slate-600">{trainee.serial_number || index + 1}</TableCell>
+                    <TableCell className="py-4 px-6 font-medium text-slate-800">{trainee.id_number}</TableCell>
                     <TableCell className="py-4 px-6 font-medium text-slate-800">{trainee.full_name}</TableCell>
-                    <TableCell className="py-4 px-6 text-slate-600">{trainee.age}</TableCell>
                     <TableCell className="py-4 px-6 text-slate-600">
                       <Badge variant={trainee.gender?.toLowerCase() === 'male' || trainee.gender?.toLowerCase() === 'm' ? 'default' : 'secondary'}>
                         {trainee.gender?.toLowerCase() === 'm' ? 'Male' : 
@@ -241,15 +251,55 @@ const TraineeAnalysis: React.FC<{ handleEdit?: (type: string, id: string) => voi
                          trainee.gender}
                       </Badge>
                     </TableCell>
-                    <TableCell className="py-4 px-6 text-slate-600 capitalize">{trainee.educational_background}</TableCell>
+                    <TableCell className="py-4 px-6 text-slate-600">{trainee.date_of_birth || '-'}</TableCell>
+                    <TableCell className="py-4 px-6 text-slate-600 capitalize">{trainee.educational_background || '-'}</TableCell>
                     <TableCell className="py-4 px-6 text-slate-600">
                       <Badge variant={trainee.employment_status?.toLowerCase() === 'employed' || trainee.employment_status?.toLowerCase() === 'emp' ? 'default' : 'secondary'}>
-                        {trainee.employment_status}
+                        {trainee.employment_status || '-'}
                       </Badge>
                     </TableCell>
                     <TableCell className="py-4 px-6 text-slate-600 font-medium">{trainee.centre_name?.toUpperCase()}</TableCell>
+                    <TableCell className="py-4 px-6 text-slate-600">{trainee.nin || '-'}</TableCell>
+                    <TableCell className="py-4 px-6 text-slate-600">{trainee.phone_number || '-'}</TableCell>
                     <TableCell className="py-4 px-6 text-slate-600">
                       <Badge variant="outline">Cohort {trainee.cohort_number}</Badge>
+                    </TableCell>
+                    <TableCell className="py-4 px-6 text-slate-600">
+                      {trainee.learner_category ? (
+                        <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">
+                          {trainee.learner_category}
+                        </Badge>
+                      ) : (
+                        <span className="text-slate-400">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="py-4 px-6 text-slate-600">{trainee.email || '-'}</TableCell>
+                    <TableCell className="py-4 px-6 text-slate-600">{trainee.lga || '-'}</TableCell>
+                    <TableCell className="py-4 px-6">
+                      <div className="flex flex-wrap gap-1">
+                        {trainee.passed && (
+                          <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">Passed</Badge>
+                        )}
+                        {trainee.failed && (
+                          <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200">Failed</Badge>
+                        )}
+                        {trainee.not_sat_for_exams && (
+                          <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200">Not Sat</Badge>
+                        )}
+                        {trainee.dropout && (
+                          <Badge variant="outline" className="bg-orange-100 text-orange-800 border-orange-200">Dropout</Badge>
+                        )}
+                        {!trainee.passed && !trainee.failed && !trainee.not_sat_for_exams && !trainee.dropout && (
+                          <span className="text-slate-400 text-xs">-</span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-4 px-6 text-slate-600">
+                      {trainee.people_with_special_needs ? (
+                        <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-200">PWD</Badge>
+                      ) : (
+                        <span className="text-slate-400">-</span>
+                      )}
                     </TableCell>
                     <TableCell className="py-4 px-6">
                       <div className="flex gap-2">
@@ -275,7 +325,7 @@ const TraineeAnalysis: React.FC<{ handleEdit?: (type: string, id: string) => voi
                 ))}
                 {filteredTrainees.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-12 text-slate-500">
+                    <TableCell colSpan={17} className="text-center py-12 text-slate-500">
                       <div className="flex flex-col items-center gap-2">
                         <Users className="w-8 h-8 text-slate-400" />
                         <p>No trainees found for selected filters</p>
