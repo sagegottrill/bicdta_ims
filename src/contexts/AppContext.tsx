@@ -479,9 +479,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     console.log('✅ Data refresh complete');
   };
 
-  // Load data on component mount
+  // Load data on component mount - don't block UI
   useEffect(() => {
     console.log('📦 AppProvider mounted, loading data...');
+    // Set loading to false immediately to show UI
+    setLoading(false);
+    // Load data in background
     refreshData();
   }, []);
 

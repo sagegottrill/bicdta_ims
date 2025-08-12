@@ -79,16 +79,17 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-slate-600">Loading data</p>
-        </div>
+  // Show skeleton loaders instead of blocking the entire dashboard
+  const SkeletonCard = () => (
+    <div className="bg-white rounded-lg p-6 animate-pulse">
+      <div className="h-4 bg-slate-200 rounded w-1/3 mb-4"></div>
+      <div className="space-y-3">
+        <div className="h-3 bg-slate-200 rounded"></div>
+        <div className="h-3 bg-slate-200 rounded w-2/3"></div>
+        <div className="h-3 bg-slate-200 rounded w-1/2"></div>
       </div>
-    );
-  }
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
@@ -565,8 +566,17 @@ const AdminDashboard: React.FC = () => {
                       <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-emerald-200 shadow-sm">
                         <span className="font-medium text-slate-800">Total Trainees</span>
                         <div className="text-right">
-                          <div className="text-2xl font-bold text-emerald-600">45</div>
-                          <div className="text-sm text-slate-500">enrolled</div>
+                          {loading ? (
+                            <div className="animate-pulse">
+                              <div className="h-8 bg-slate-200 rounded w-12 mb-1"></div>
+                              <div className="h-3 bg-slate-200 rounded w-16"></div>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="text-2xl font-bold text-emerald-600">{totalTrainees}</div>
+                              <div className="text-sm text-slate-500">enrolled</div>
+                            </>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-purple-200 shadow-sm">
@@ -593,8 +603,17 @@ const AdminDashboard: React.FC = () => {
                       <div className="flex items-center justify-between p-3 bg-gradient-to-r from-emerald-50 to-emerald-100 rounded-lg border border-emerald-200">
                         <span className="font-medium text-slate-800">Total Centres</span>
                         <div className="text-right">
-                          <div className="text-2xl font-bold text-emerald-600">{totalCentres}</div>
-                          <div className="text-sm text-slate-500">operational</div>
+                          {loading ? (
+                            <div className="animate-pulse">
+                              <div className="h-8 bg-slate-200 rounded w-8 mb-1"></div>
+                              <div className="h-3 bg-slate-200 rounded w-20"></div>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="text-2xl font-bold text-emerald-600">{totalCentres}</div>
+                              <div className="text-sm text-slate-500">operational</div>
+                            </>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg border border-blue-200">
