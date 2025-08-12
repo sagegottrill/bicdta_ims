@@ -483,7 +483,7 @@ const InstructorDashboard: React.FC = () => {
                   ))
                 ) : (
                   filteredTrainees.map((t, index) => (
-                  <tr key={t.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                    <tr key={t.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
                     <td className="py-4 px-6 text-slate-600">{t.serial_number || index + 1}</td>
                     <td className="py-4 px-6 font-medium text-slate-800">{t.id_number}</td>
                     <td className="py-4 px-6 font-medium text-slate-800">{t.full_name}</td>
@@ -559,7 +559,8 @@ const InstructorDashboard: React.FC = () => {
                       </Button>
                     </td>
                   </tr>
-                ))}
+                ))
+                )}
                 {filteredTrainees.length === 0 && (
                   <tr>
                     <td colSpan={18} className="text-center py-12 text-slate-500">
