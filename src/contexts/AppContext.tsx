@@ -482,6 +482,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Load data on component mount - don't block UI
   useEffect(() => {
     console.log('📦 AppProvider mounted, loading data...');
+    
+    // Check for persisted user session
+    const persistedUser = localStorage.getItem('bictda_user');
+    if (persistedUser) {
+      try {
+        const userData = JSON.parse(persistedUser);
+        console.log('🔍 Found persisted user:', userData);
+        setCurrentUser(userData);
+      } catch (error) {
+        console.warn('⚠️ Error parsing persisted user:', error);
+        localStorage.removeItem('bictda_user');
+      }
+    }
+    
     // Set loading to false immediately to show UI
     setLoading(false);
     // Load data in background
@@ -566,12 +580,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
         }
         
-        setCurrentUser({ 
+        const userSession = { 
           role, 
           name: userData?.name || name, 
           email: user.email || email, 
           centre_name: userData?.centre_name || centre_name 
-        });
+        };
+        
+        setCurrentUser(userSession);
+        
+        // Persist user session to localStorage
+        localStorage.setItem('bictda_user', JSON.stringify(userSession));
+        console.log('💾 User session persisted to localStorage');
         
         console.log('✅ Login successful');
       return true;
@@ -595,7 +615,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       
       await signOutUser();
-    setCurrentUser(null);
+      setCurrentUser(null);
+      
+      // Clear persisted session
+      localStorage.removeItem('bictda_user');
+      console.log('🗑️ User session cleared from localStorage');
+      
       console.log('✅ Logout successful');
     } catch (error) {
       console.error('❌ Logout error:', error);
