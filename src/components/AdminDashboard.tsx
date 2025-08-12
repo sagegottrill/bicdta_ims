@@ -17,7 +17,7 @@ import CentreForm from './forms/CentreForm';
 type ActiveView = 'overview' | 'trainees' | 'instructors' | 'centres' | 'reports' | 'analytics' | 'settings';
 
 const AdminDashboard: React.FC = () => {
-  const { currentUser, logout, trainees, loading, announcements, addAnnouncement, announcementsLoading, weeklyReports, meReports } = useAppContext();
+  const { currentUser, logout, trainees, instructors, centres, loading, announcements, addAnnouncement, announcementsLoading, weeklyReports, meReports } = useAppContext();
   const [activeView, setActiveView] = useState<ActiveView>('overview');
   const [showSettings, setShowSettings] = useState(false);
   const [announcement, setAnnouncement] = useState('');
@@ -26,29 +26,52 @@ const AdminDashboard: React.FC = () => {
   const [showCentreForm, setShowCentreForm] = useState(false);
 
 
-  // Analytics calculations
-  const totalTrainees = trainees.length;
-  const uniqueCentres = [...new Set(trainees.map(t => t.centre_name?.toUpperCase()))].filter(Boolean);
+  // Real-time Analytics calculations
+  const totalTrainees = trainees?.length || 0;
+  const uniqueCentres = [...new Set(trainees?.map(t => t.centre_name?.toUpperCase()) || [])].filter(Boolean);
   const totalCentres = uniqueCentres.length;
-  const totalCohorts = [...new Set(trainees.map(t => t.cohort_number))].filter(c => c && c > 0).length;
+  const totalCohorts = [...new Set(trainees?.map(t => t.cohort_number) || [])].filter(c => c && c > 0).length;
   
   const genderDistribution = {
-    male: trainees.filter(t => ['male', 'm'].includes(t.gender?.toLowerCase() || '')).length,
-    female: trainees.filter(t => ['female', 'f'].includes(t.gender?.toLowerCase() || '')).length
+    male: trainees?.filter(t => ['male', 'm'].includes(t.gender?.toLowerCase() || '')).length || 0,
+    female: trainees?.filter(t => ['female', 'f'].includes(t.gender?.toLowerCase() || '')).length || 0
   };
 
   const employmentStats = {
-    employed: trainees.filter(t => ['employed', 'emp'].includes(t.employment_status?.toLowerCase() || '')).length,
-    unemployed: trainees.filter(t => ['unemployed', 'unemp'].includes(t.employment_status?.toLowerCase() || '')).length
+    employed: trainees?.filter(t => ['employed', 'emp'].includes(t.employment_status?.toLowerCase() || '')).length || 0,
+    unemployed: trainees?.filter(t => ['unemployed', 'unemp'].includes(t.employment_status?.toLowerCase() || '')).length || 0
   };
 
-  // New analytics for exam results and special needs
+  // Real-time analytics for exam results and special needs
   const examResults = {
-    passed: trainees.filter(t => t.passed).length,
-    failed: trainees.filter(t => t.failed).length,
-    notSat: trainees.filter(t => t.not_sat_for_exams).length,
-    dropout: trainees.filter(t => t.dropout).length,
-    enrolled: trainees.filter(t => !t.passed && !t.failed && !t.not_sat_for_exams && !t.dropout).length
+    passed: trainees?.filter(t => t.passed).length || 0,
+    failed: trainees?.filter(t => t.failed).length || 0,
+    notSat: trainees?.filter(t => t.not_sat_for_exams).length || 0,
+    dropout: trainees?.filter(t => t.dropout).length || 0,
+    enrolled: trainees?.filter(t => !t.passed && !t.failed && !t.not_sat_for_exams && !t.dropout).length || 0
+  };
+
+  // Real-time instructor statistics
+  const instructorStats = {
+    total: instructors?.length || 0,
+    pending: instructors?.filter(i => i.status === 'pending').length || 0,
+    approved: instructors?.filter(i => i.status === 'approved').length || 0,
+    active: instructors?.filter(i => i.status === 'active').length || 0,
+    revoked: instructors?.filter(i => i.status === 'revoked').length || 0,
+    online: instructors?.filter(i => i.is_online).length || 0
+  };
+
+  // Real-time report statistics
+  const reportStats = {
+    weekly: weeklyReports?.length || 0,
+    monthly: meReports?.length || 0,
+    total: (weeklyReports?.length || 0) + (meReports?.length || 0)
+  };
+
+  // Real-time centre statistics
+  const centreStats = {
+    total: centres?.length || 0,
+    operational: centres?.filter(c => c.power_available && c.internet_available).length || 0
   };
 
 
@@ -79,8 +102,8 @@ const AdminDashboard: React.FC = () => {
         <div className="h-3 bg-slate-200 rounded w-2/3"></div>
         <div className="h-3 bg-slate-200 rounded w-1/2"></div>
       </div>
-    </div>
-  );
+      </div>
+    );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
@@ -457,17 +480,23 @@ const AdminDashboard: React.FC = () => {
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       <div className="text-center p-4 bg-white rounded-lg shadow-sm border border-green-200">
-                        <div className="text-3xl font-bold text-blue-600 mb-2">12</div>
+                        <div className="text-3xl font-bold text-blue-600 mb-2">
+                          {loading ? '...' : Math.max(1, Math.floor((Date.now() - new Date('2024-01-01').getTime()) / (1000 * 60 * 60 * 24 * 7)))}
+                        </div>
                         <div className="text-sm font-medium text-slate-700">Weeks Active</div>
                         <div className="text-xs text-slate-500 mt-1">System running smoothly</div>
                       </div>
                       <div className="text-center p-4 bg-white rounded-lg shadow-sm border border-emerald-200">
-                        <div className="text-3xl font-bold text-emerald-600 mb-2">45</div>
+                        <div className="text-3xl font-bold text-emerald-600 mb-2">
+                          {loading ? '...' : totalTrainees}
+                        </div>
                         <div className="text-sm font-medium text-slate-700">Trainees</div>
                         <div className="text-xs text-slate-500 mt-1">Currently enrolled</div>
                       </div>
                       <div className="text-center p-4 bg-white rounded-lg shadow-sm border border-purple-200">
-                        <div className="text-3xl font-bold text-purple-600 mb-2">24</div>
+                        <div className="text-3xl font-bold text-purple-600 mb-2">
+                          {loading ? '...' : reportStats.total}
+                        </div>
                         <div className="text-sm font-medium text-slate-700">Reports</div>
                         <div className="text-xs text-slate-500 mt-1">Submitted this month</div>
                       </div>
@@ -490,14 +519,14 @@ const AdminDashboard: React.FC = () => {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-lg p-4 text-center">
                         <div className="text-3xl font-bold text-blue-600 mb-1">{genderDistribution.male}</div>
-                        <div className="text-sm text-slate-600">Male</div>
+                        <div className="text-sm text-slate-600">MALE</div>
                         <div className="text-xs text-slate-500 mt-1">
                           {totalTrainees > 0 ? ((genderDistribution.male / totalTrainees) * 100).toFixed(1) : 0}% of total
                         </div>
                       </div>
                       <div className="bg-gradient-to-r from-pink-50 to-pink-100 border border-pink-200 rounded-lg p-4 text-center">
                         <div className="text-3xl font-bold text-pink-600 mb-1">{genderDistribution.female}</div>
-                        <div className="text-sm text-slate-600">Female</div>
+                        <div className="text-sm text-slate-600">FEMALE</div>
                         <div className="text-xs text-slate-500 mt-1">
                           {totalTrainees > 0 ? ((genderDistribution.female / totalTrainees) * 100).toFixed(1) : 0}% of total
                         </div>
@@ -619,8 +648,8 @@ const AdminDashboard: React.FC = () => {
                             </div>
                           ) : (
                             <>
-                              <div className="text-2xl font-bold text-emerald-600">{totalCentres}</div>
-                              <div className="text-sm text-slate-500">operational</div>
+                          <div className="text-2xl font-bold text-emerald-600">{totalCentres}</div>
+                          <div className="text-sm text-slate-500">operational</div>
                             </>
                           )}
                         </div>

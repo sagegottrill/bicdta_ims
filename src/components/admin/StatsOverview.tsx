@@ -8,8 +8,8 @@ const StatsOverview: React.FC = () => {
 
   // Gender Distribution
   const genderData = [
-    { name: 'Male', value: trainees.filter(t => t.gender === 'male').length, color: '#16a34a' },
-    { name: 'Female', value: trainees.filter(t => t.gender === 'female').length, color: '#4ade80' },
+      { name: 'MALE', value: trainees.filter(t => t.gender === 'male').length, color: '#16a34a' },
+  { name: 'FEMALE', value: trainees.filter(t => t.gender === 'female').length, color: '#4ade80' },
   ];
 
   // Centre Distribution

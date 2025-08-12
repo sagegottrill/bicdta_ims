@@ -362,10 +362,10 @@ const CentreAnalysis: React.FC<{ handleEdit?: (type: string, id: string) => void
                       <TableCell className="py-4 px-6 text-slate-600">
                         <div className="flex items-center gap-2">
                           <Badge variant="outline" className="text-blue-600 border-blue-200">
-                            {centre.maleCount} Male
+                            {centre.maleCount} MALE
                           </Badge>
                           <Badge variant="outline" className="text-pink-600 border-pink-200">
-                            {centre.femaleCount} Female
+                            {centre.femaleCount} FEMALE
                           </Badge>
                         </div>
                       </TableCell>

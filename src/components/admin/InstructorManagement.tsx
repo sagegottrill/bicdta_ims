@@ -49,7 +49,7 @@ const InstructorManagement: React.FC<InstructorManagementProps> = ({ currentUser
   const [rejectionReason, setRejectionReason] = useState('');
   const [instructorToReject, setInstructorToReject] = useState<any>(null);
 
-  const filteredInstructors = instructors.filter(instructor => {
+  const filteredInstructors = instructors?.filter(instructor => {
     const matchesSearch = searchTerm === '' || 
       instructor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       instructor.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -59,7 +59,7 @@ const InstructorManagement: React.FC<InstructorManagementProps> = ({ currentUser
     const matchesStatus = statusFilter === 'all' || instructor.status === statusFilter;
 
     return matchesSearch && matchesStatus;
-  });
+  }) || [];
 
   const handleEdit = (instructor: any) => {
     setEditingInstructor(instructor.id);
@@ -184,16 +184,16 @@ const InstructorManagement: React.FC<InstructorManagementProps> = ({ currentUser
   ];
 
   const stats = {
-    total: instructors.length,
-    pending: instructors.filter(i => i.status === 'pending').length,
-    approved: instructors.filter(i => i.status === 'approved').length,
-    active: instructors.filter(i => i.status === 'active').length,
-    revoked: instructors.filter(i => i.status === 'revoked').length,
-    online: instructors.filter(i => i.is_online).length,
+    total: instructors?.length || 0,
+    pending: instructors?.filter(i => i.status === 'pending').length || 0,
+    approved: instructors?.filter(i => i.status === 'approved').length || 0,
+    active: instructors?.filter(i => i.status === 'active').length || 0,
+    revoked: instructors?.filter(i => i.status === 'revoked').length || 0,
+    online: instructors?.filter(i => i.is_online).length || 0,
     // Real-time statistics for selected instructor
-    weeksActive: selectedInstructor ? 12 : 0, // This would be calculated based on registration date
-    traineesCount: selectedInstructor ? 45 : 0, // This would be calculated from trainees table
-    reportsCount: selectedInstructor ? 24 : 0, // This would be calculated from reports tables
+    weeksActive: selectedInstructor ? Math.max(1, Math.floor((Date.now() - new Date('2024-01-01').getTime()) / (1000 * 60 * 60 * 24 * 7))) : 0,
+    traineesCount: selectedInstructor ? 0 : 0, // Will be calculated from trainees table when needed
+    reportsCount: selectedInstructor ? 0 : 0, // Will be calculated from reports tables when needed
   };
 
   return (
@@ -405,181 +405,115 @@ const InstructorManagement: React.FC<InstructorManagementProps> = ({ currentUser
         </Card>
       )}
 
-      {/* All Instructors Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {filteredInstructors.map((instructor) => (
-          <Card key={instructor.id} className="border-0 shadow-lg hover:shadow-xl transition-shadow">
-            <CardHeader className="pb-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                    <span className="text-white font-semibold text-sm">
-                      {instructor.name.charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                  <div>
-                    <CardTitle className="text-lg font-semibold text-slate-800">
-                      {instructor.name}
-                    </CardTitle>
-                    <div className="flex items-center gap-2 mt-1">
+      {/* All Instructors Table */}
+      <Card className="border-0 shadow-lg">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-slate-800">
+            <Users className="w-5 h-5 text-blue-600" />
+            All Instructors
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-slate-200">
+                  <th className="text-left py-3 px-4 font-semibold text-slate-700">Instructor</th>
+                  <th className="text-left py-3 px-4 font-semibold text-slate-700">Contact</th>
+                  <th className="text-left py-3 px-4 font-semibold text-slate-700">Centre</th>
+                  <th className="text-left py-3 px-4 font-semibold text-slate-700">Status</th>
+                  <th className="text-left py-3 px-4 font-semibold text-slate-700">Online</th>
+                  <th className="text-left py-3 px-4 font-semibold text-slate-700">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredInstructors.map((instructor) => (
+                  <tr key={instructor.id} className="border-b border-slate-100 hover:bg-slate-50">
+                    <td className="py-4 px-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                          <span className="text-white font-semibold text-xs">
+                            {instructor.name.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        <div>
+                          <div className="font-semibold text-slate-800">{instructor.name}</div>
+                          <div className="text-sm text-slate-500">{instructor.lga}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="text-sm">
+                        <div className="text-slate-800">{instructor.email}</div>
+                        <div className="text-slate-500">{instructor.phone_number}</div>
+                      </div>
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="text-sm text-slate-700">{instructor.centre_name || 'Not assigned'}</div>
+                    </td>
+                    <td className="py-4 px-4">
                       {getStatusBadge(instructor.status)}
+                    </td>
+                    <td className="py-4 px-4">
                       {getOnlineStatus(instructor.is_online)}
-                    </div>
-                  </div>
-                </div>
-                                 <div className="flex gap-2">
-                   <Button
-                     size="sm"
-                     variant="outline"
-                     onClick={() => {
-                       setSelectedInstructor(instructor);
-                     }}
-                   >
-                     <Eye className="w-4 h-4" />
-                   </Button>
-                  {editingInstructor === instructor.id ? (
-                    <>
-                      <Button size="sm" onClick={() => handleSave(instructor.id)} className="bg-green-600 hover:bg-green-700">
-                        <Save className="w-4 h-4" />
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={handleCancel}>
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </>
-                  ) : (
-                    <Button size="sm" variant="outline" onClick={() => handleEdit(instructor)}>
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </CardHeader>
-
-            <CardContent className="space-y-4">
-              {editingInstructor === instructor.id ? (
-                <div className="space-y-3">
-                  <div>
-                    <Label className="text-xs">Name</Label>
-                    <Input
-                      value={editData.name}
-                      onChange={(e) => handleChange('name', e.target.value)}
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Email</Label>
-                    <Input
-                      value={editData.email}
-                      onChange={(e) => handleChange('email', e.target.value)}
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Phone</Label>
-                    <Input
-                      value={editData.phone_number}
-                      onChange={(e) => handleChange('phone_number', e.target.value)}
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Center</Label>
-                    <Select value={editData.centre_name} onValueChange={(value) => handleChange('centre_name', value)}>
-                      <SelectTrigger className="h-8 text-sm">
-                        <SelectValue placeholder="Select center" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {centreOptions.map(centre => (
-                          <SelectItem key={centre} value={centre}>{centre}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-slate-400" />
-                    <span>{instructor.email}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Phone className="w-4 h-4 text-slate-400" />
-                    <span>{instructor.phone_number}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-slate-400" />
-                    <span>{instructor.lga}</span>
-                  </div>
-                                     {instructor.centre_name && (
-                     <div className="flex items-center gap-2">
-                       <Building className="w-4 h-4 text-slate-400" />
-                       <span>{instructor.centre_name}</span>
-                     </div>
-                   )}
-                   
-                   {/* Quick Stats Preview */}
-                   <div className="flex items-center gap-4 pt-2 text-xs text-slate-500">
-                     <div className="flex items-center gap-1">
-                       <Clock className="w-3 h-3" />
-                       <span>12w</span>
-                     </div>
-                     <div className="flex items-center gap-1">
-                       <Users className="w-3 h-3" />
-                       <span>45 trainees</span>
-                     </div>
-                     <div className="flex items-center gap-1">
-                       <FileText className="w-3 h-3" />
-                       <span>24 reports</span>
-                     </div>
-                   </div>
-                 </div>
-               )}
-
-              {/* Action Buttons */}
-              <div className="flex gap-2 pt-2">
-                {instructor.status === 'pending' && (
-                  <Button
-                    size="sm"
-                    onClick={() => handleApprove(instructor.id)}
-                    className="bg-green-600 hover:bg-green-700 text-white"
-                  >
-                    <CheckCircle className="w-4 h-4 mr-1" />
-                    Approve
-                  </Button>
-                )}
-                {instructor.status === 'approved' && (
-                  <Button
-                    size="sm"
-                    onClick={() => openRejectionModal(instructor)}
-                    className="bg-red-600 hover:bg-red-700 text-white"
-                  >
-                    <XCircle className="w-4 h-4 mr-1" />
-                    Revoke
-                  </Button>
-                )}
-                {instructor.status === 'revoked' && (
-                  <Button
-                    size="sm"
-                    onClick={() => handleApprove(instructor.id)}
-                    className="bg-green-600 hover:bg-green-700 text-white"
-                  >
-                    <CheckCircle className="w-4 h-4 mr-1" />
-                    Re-approve
-                  </Button>
-                )}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleDelete(instructor.id)}
-                  className="text-red-600 border-red-200 hover:bg-red-50"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="flex gap-2">
+                        {instructor.status === 'pending' && (
+                          <Button
+                            size="sm"
+                            onClick={() => handleApprove(instructor.id)}
+                            className="bg-green-600 hover:bg-green-700 text-white text-xs"
+                          >
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            Approve
+                          </Button>
+                        )}
+                        {instructor.status === 'approved' && (
+                          <Button
+                            size="sm"
+                            onClick={() => openRejectionModal(instructor)}
+                            className="bg-red-600 hover:bg-red-700 text-white text-xs"
+                          >
+                            <XCircle className="w-3 h-3 mr-1" />
+                            Revoke
+                          </Button>
+                        )}
+                        {instructor.status === 'revoked' && (
+                          <Button
+                            size="sm"
+                            onClick={() => handleApprove(instructor.id)}
+                            className="bg-green-600 hover:bg-green-700 text-white text-xs"
+                          >
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            Re-approve
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEdit(instructor)}
+                          className="text-xs"
+                        >
+                          <Edit className="w-3 h-3" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDelete(instructor.id)}
+                          className="text-red-600 border-red-200 hover:bg-red-50 text-xs"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
 
       {filteredInstructors.length === 0 && (
         <Card>

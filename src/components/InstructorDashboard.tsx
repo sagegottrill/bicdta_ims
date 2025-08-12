@@ -18,37 +18,41 @@ const InstructorDashboard: React.FC = () => {
   const [showProfile, setShowProfile] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedTrainee, setSelectedTrainee] = useState<any>(null);
-  const [selectedCentre, setSelectedCentre] = useState<string>('all');
+  const [selectedCentre, setSelectedCentre] = useState<string>(
+    currentUser?.role === 'instructor' && currentUser.centre_name 
+      ? currentUser.centre_name.toUpperCase() 
+      : 'all'
+  );
   const [selectedCohort, setSelectedCohort] = useState<string>('all');
 
-  // Analytics
+  // Real-time Analytics
   const genderStats = [
-    { label: 'Male', count: trainees.filter(t => {
+    { label: 'MALE', count: trainees?.filter(t => {
       const gender = t.gender?.toLowerCase();
       return gender === 'male' || gender === 'm';
-    }).length },
-    { label: 'Female', count: trainees.filter(t => {
+    }).length || 0 },
+    { label: 'FEMALE', count: trainees?.filter(t => {
       const gender = t.gender?.toLowerCase();
       return gender === 'female' || gender === 'f';
-    }).length },
+    }).length || 0 },
   ];
   
-  const centreStats = trainees.reduce((acc, trainee) => {
+  const centreStats = trainees?.reduce((acc, trainee) => {
     const centreName = trainee.centre_name?.toUpperCase() || 'UNKNOWN CENTRE';
     acc[centreName] = (acc[centreName] || 0) + 1;
     return acc;
-  }, {} as Record<string, number>);
+  }, {} as Record<string, number>) || {};
 
-  const cohortStats = trainees.reduce((acc, trainee) => {
+  const cohortStats = trainees?.reduce((acc, trainee) => {
     const cohortNum = trainee.cohort_number || 0;
     if (cohortNum > 0) {
       acc[cohortNum.toString()] = (acc[cohortNum.toString()] || 0) + 1;
     }
     return acc;
-  }, {} as Record<string, number>);
+  }, {} as Record<string, number>) || {};
 
-  // Filtered trainees based on instructor's center and selected filters
-  const filteredTrainees = trainees.filter(trainee => {
+  // Real-time filtered trainees based on instructor's center and selected filters
+  const filteredTrainees = trainees?.filter(trainee => {
     // First filter by instructor's center
     if (currentUser?.role === 'instructor' && currentUser.centre_name) {
       if (!trainee.centre_name?.toLowerCase().includes(currentUser.centre_name.toLowerCase())) {
@@ -58,24 +62,24 @@ const InstructorDashboard: React.FC = () => {
     
     // Then apply additional filters
     const centreMatch = selectedCentre === 'all' || trainee.centre_name?.toUpperCase() === selectedCentre;
-    const cohortMatch = selectedCohort === 'all' || trainee.cohort_number.toString() === selectedCohort;
+    const cohortMatch = selectedCohort === 'all' || trainee.cohort_number?.toString() === selectedCohort;
     return centreMatch && cohortMatch;
-  });
+  }) || [];
 
   // Get unique centres and cohorts for filter dropdowns
   const uniqueCentres = currentUser?.role === 'instructor' && currentUser.centre_name 
     ? [currentUser.centre_name.toUpperCase()]
     : [
-            "DIKWA DIGITAL LITERACY CENTRE",
-    "GAJIRAM ICT CENTER", 
-    "GUBIO DIGITAL LITERACY CENTRE",
-    "KAGA DIGITAL LITERACY CENTRE",
-    "MONGUNO DIGITAL LITERACY CENTRE",
-    "MAFA DIGITAL LITERACY CENTRE",
-    "DAMASAK DIGITAL LITERACY CENTER",
-    "BAYO DIGITAL LITERACY CENTER"
-  ];
-  const uniqueCohorts = [...new Set(trainees.map(t => t.cohort_number?.toString() || ''))].filter(cohort => cohort && cohort !== '0').sort();
+        "DIKWA DIGITAL LITERACY CENTRE",
+        "GAJIRAM ICT CENTER", 
+        "GUBIO DIGITAL LITERACY CENTRE",
+        "KAGA DIGITAL LITERACY CENTRE",
+        "MONGUNO DIGITAL LITERACY CENTRE",
+        "MAFA DIGITAL LITERACY CENTRE",
+        "DAMASAK DIGITAL LITERACY CENTER",
+        "BAYO DIGITAL LITERACY CENTER"
+      ];
+  const uniqueCohorts = [...new Set(trainees?.map(t => t.cohort_number?.toString() || '') || [])].filter(cohort => cohort && cohort !== '0').sort();
 
   // Show skeleton loaders instead of blocking the entire dashboard
   const SkeletonCard = () => (
@@ -86,8 +90,8 @@ const InstructorDashboard: React.FC = () => {
         <div className="h-3 bg-slate-200 rounded w-2/3"></div>
         <div className="h-3 bg-slate-200 rounded w-1/2"></div>
       </div>
-    </div>
-  );
+      </div>
+    );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
@@ -188,8 +192,8 @@ const InstructorDashboard: React.FC = () => {
                       </div>
                     ) : (
                       <>
-                        <p className="text-3xl font-bold">{filteredTrainees.length}</p>
-                        <p className="text-blue-100 text-xs mt-2">Across all centres</p>
+                    <p className="text-3xl font-bold">{filteredTrainees.length}</p>
+                    <p className="text-blue-100 text-xs mt-2">Across all centres</p>
                       </>
                     )}
                   </div>
@@ -212,8 +216,8 @@ const InstructorDashboard: React.FC = () => {
                       </div>
                     ) : (
                       <>
-                        <p className="text-3xl font-bold">{filteredTrainees.filter(t => t.passed).length}</p>
-                        <p className="text-green-100 text-xs mt-2">Successful trainees</p>
+                    <p className="text-3xl font-bold">{filteredTrainees.filter(t => t.passed).length}</p>
+                    <p className="text-green-100 text-xs mt-2">Successful trainees</p>
                       </>
                     )}
                   </div>
@@ -236,8 +240,8 @@ const InstructorDashboard: React.FC = () => {
                       </div>
                     ) : (
                       <>
-                        <p className="text-3xl font-bold">{filteredTrainees.filter(t => t.failed).length}</p>
-                        <p className="text-red-100 text-xs mt-2">Need retraining</p>
+                    <p className="text-3xl font-bold">{filteredTrainees.filter(t => t.failed).length}</p>
+                    <p className="text-red-100 text-xs mt-2">Need retraining</p>
                       </>
                     )}
                   </div>
@@ -260,8 +264,8 @@ const InstructorDashboard: React.FC = () => {
                       </div>
                     ) : (
                       <>
-                        <p className="text-3xl font-bold">{filteredTrainees.filter(t => t.people_with_special_needs).length}</p>
-                        <p className="text-orange-100 text-xs mt-2">PWD trainees</p>
+                    <p className="text-3xl font-bold">{filteredTrainees.filter(t => t.people_with_special_needs).length}</p>
+                    <p className="text-orange-100 text-xs mt-2">PWD trainees</p>
                       </>
                     )}
                   </div>
@@ -405,17 +409,27 @@ const InstructorDashboard: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-3">
                 <label className="text-sm font-semibold text-slate-700">Training Centre</label>
-                <Select value={selectedCentre} onValueChange={setSelectedCentre}>
-                  <SelectTrigger className="bg-white/80 border-slate-200 rounded-xl h-12">
-                    <SelectValue placeholder="Select Centre" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Training Centres</SelectItem>
-                    {uniqueCentres.map(centre => (
-                      <SelectItem key={centre} value={centre}>{centre}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {currentUser?.role === 'instructor' && currentUser.centre_name ? (
+                  // Locked for instructors - show only their centre
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl px-6 py-4">
+                    <p className="text-blue-800 font-bold text-lg">{currentUser.centre_name}</p>
+                    <p className="text-blue-600 text-sm">Your assigned centre</p>
+                    <p className="text-blue-500 text-xs">Access restricted to this centre</p>
+                  </div>
+                ) : (
+                  // Full access for admins
+                  <Select value={selectedCentre} onValueChange={setSelectedCentre}>
+                    <SelectTrigger className="bg-white/80 border-slate-200 rounded-xl h-12">
+                      <SelectValue placeholder="Select Centre" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Training Centres</SelectItem>
+                      {uniqueCentres.map(centre => (
+                        <SelectItem key={centre} value={centre}>{centre}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
               
               <div className="space-y-3">
@@ -483,13 +497,13 @@ const InstructorDashboard: React.FC = () => {
                   ))
                 ) : (
                   filteredTrainees.map((t, index) => (
-                    <tr key={t.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                  <tr key={t.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
                     <td className="py-4 px-6 text-slate-600">{t.serial_number || index + 1}</td>
                     <td className="py-4 px-6 font-medium text-slate-800">{t.id_number}</td>
                     <td className="py-4 px-6 font-medium text-slate-800">{t.full_name}</td>
                     <td className="py-4 px-6 text-slate-600 capitalize">
-                      {t.gender?.toLowerCase() === 'm' ? 'Male' : 
-                       t.gender?.toLowerCase() === 'f' ? 'Female' : 
+                      {t.gender?.toLowerCase() === 'm' ? 'MALE' : 
+                       t.gender?.toLowerCase() === 'f' ? 'FEMALE' : 
                        t.gender}
                     </td>
                     <td className="py-4 px-6 text-slate-600">{t.date_of_birth || '-'}</td>

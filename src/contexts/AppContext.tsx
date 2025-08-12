@@ -482,6 +482,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  // Refresh instructor data periodically for real-time status
+  useEffect(() => {
+    if (currentUser?.role === 'admin') {
+      const interval = setInterval(() => {
+        fetchInstructors();
+      }, 30000); // Refresh every 30 seconds
+
+      return () => clearInterval(interval);
+    }
+  }, [currentUser?.role]);
+
   const refreshData = async () => {
     console.log('🔄 Refreshing data...');
     setLoading(true);
@@ -664,7 +675,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       
       await signOutUser();
-      setCurrentUser(null);
+    setCurrentUser(null);
       
       // Clear persisted session
       localStorage.removeItem('bictda_user');

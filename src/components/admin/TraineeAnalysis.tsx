@@ -92,7 +92,7 @@ const TraineeAnalysis: React.FC<{ handleEdit?: (type: string, id: string) => voi
               <div>
                 <p className="text-emerald-100 text-sm font-medium mb-1">Gender Balance</p>
                 <p className="text-4xl font-bold">{maleCount + femaleCount}</p>
-                <p className="text-emerald-100 text-xs mt-2">Male: {maleCount} | Female: {femaleCount}</p>
+                                        <p className="text-emerald-100 text-xs mt-2">MALE: {maleCount} | FEMALE: {femaleCount}</p>
               </div>
               <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
                 <Target className="w-6 h-6 text-white" />
@@ -245,11 +245,11 @@ const TraineeAnalysis: React.FC<{ handleEdit?: (type: string, id: string) => voi
                     <TableCell className="py-4 px-6 font-medium text-slate-800">{trainee.id_number}</TableCell>
                     <TableCell className="py-4 px-6 font-medium text-slate-800">{trainee.full_name}</TableCell>
                     <TableCell className="py-4 px-6 text-slate-600">
-                      <Badge variant={trainee.gender?.toLowerCase() === 'male' || trainee.gender?.toLowerCase() === 'm' ? 'default' : 'secondary'}>
-                        {trainee.gender?.toLowerCase() === 'm' ? 'Male' : 
-                         trainee.gender?.toLowerCase() === 'f' ? 'Female' : 
-                         trainee.gender}
-                      </Badge>
+                                              <Badge variant={trainee.gender?.toLowerCase() === 'male' || trainee.gender?.toLowerCase() === 'm' ? 'default' : 'secondary'}>
+                          {trainee.gender?.toLowerCase() === 'm' ? 'MALE' :
+                           trainee.gender?.toLowerCase() === 'f' ? 'FEMALE' :
+                           trainee.gender}
+                        </Badge>
                     </TableCell>
                     <TableCell className="py-4 px-6 text-slate-600">{trainee.date_of_birth || '-'}</TableCell>
                     <TableCell className="py-4 px-6 text-slate-600 capitalize">{trainee.educational_background || '-'}</TableCell>

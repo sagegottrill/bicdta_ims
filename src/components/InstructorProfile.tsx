@@ -263,51 +263,7 @@ const InstructorProfile: React.FC<InstructorProfileProps> = ({ onClose }) => {
               </div>
             </div>
 
-            {/* Account Statistics */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-                <Shield className="w-5 h-5 text-purple-600" />
-                Account Statistics
-              </h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
-                      <Calendar className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold text-blue-600">12</p>
-                      <p className="text-blue-700 text-sm">Weeks Active</p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-emerald-500 rounded-lg flex items-center justify-center">
-                      <Users className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold text-emerald-600">45</p>
-                      <p className="text-emerald-700 text-sm">Trainees</p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
-                      <BarChart3 className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold text-purple-600">24</p>
-                      <p className="text-purple-700 text-sm">Reports</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+
 
             {/* Action Buttons */}
             <div className="flex gap-3 pt-6 border-t border-slate-200">

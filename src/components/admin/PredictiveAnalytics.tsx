@@ -442,8 +442,8 @@ const PredictiveAnalytics: React.FC = () => {
                   <span className="font-medium text-slate-800">Gender Distribution</span>
                 </div>
                 <div className="text-right">
-                  <p className="text-2xl font-bold text-purple-600">{maleCount + femaleCount}</p>
-                  <p className="text-sm text-slate-500">Male: {maleCount} | Female: {femaleCount}</p>
+                        <p className="text-2xl font-bold text-purple-600">{maleCount + femaleCount}</p>
+      <p className="text-sm text-slate-500">MALE: {maleCount} | FEMALE: {femaleCount}</p>
                 </div>
                 </div>
               </div>
