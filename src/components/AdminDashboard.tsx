@@ -17,7 +17,7 @@ import CentreForm from './forms/CentreForm';
 type ActiveView = 'overview' | 'trainees' | 'instructors' | 'centres' | 'reports' | 'analytics' | 'settings';
 
 const AdminDashboard: React.FC = () => {
-  const { currentUser, logout, trainees, loading, announcements, addAnnouncement, announcementsLoading } = useAppContext();
+  const { currentUser, logout, trainees, loading, announcements, addAnnouncement, announcementsLoading, weeklyReports, meReports } = useAppContext();
   const [activeView, setActiveView] = useState<ActiveView>('overview');
   const [showSettings, setShowSettings] = useState(false);
   const [announcement, setAnnouncement] = useState('');
@@ -149,15 +149,15 @@ const AdminDashboard: React.FC = () => {
                 <div className="flex items-center gap-6 text-white/90">
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4" />
-                    <span className="text-sm">12 Weeks Active</span>
+                    <span className="text-sm">{loading ? '...' : '12'} Weeks Active</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Users className="w-4 h-4" />
-                    <span className="text-sm">45 Trainees</span>
+                    <span className="text-sm">{loading ? '...' : totalTrainees} Trainees</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <FileText className="w-4 h-4" />
-                    <span className="text-sm">24 Reports</span>
+                    <span className="text-sm">{loading ? '...' : '0'} Reports</span>
                   </div>
                 </div>
               </div>
@@ -550,8 +550,17 @@ const AdminDashboard: React.FC = () => {
                       <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-blue-200 shadow-sm">
                         <span className="font-medium text-slate-800">Weeks Active</span>
                         <div className="text-right">
-                          <div className="text-2xl font-bold text-blue-600">12</div>
-                          <div className="text-sm text-slate-500">since launch</div>
+                          {loading ? (
+                            <div className="animate-pulse">
+                              <div className="h-8 bg-slate-200 rounded w-8 mb-1"></div>
+                              <div className="h-3 bg-slate-200 rounded w-20"></div>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="text-2xl font-bold text-blue-600">12</div>
+                              <div className="text-sm text-slate-500">since launch</div>
+                            </>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-emerald-200 shadow-sm">
@@ -573,8 +582,17 @@ const AdminDashboard: React.FC = () => {
                       <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-purple-200 shadow-sm">
                         <span className="font-medium text-slate-800">Reports Submitted</span>
                         <div className="text-right">
-                          <div className="text-2xl font-bold text-purple-600">24</div>
-                          <div className="text-sm text-slate-500">this month</div>
+                          {loading ? (
+                            <div className="animate-pulse">
+                              <div className="h-8 bg-slate-200 rounded w-8 mb-1"></div>
+                              <div className="h-3 bg-slate-200 rounded w-20"></div>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="text-2xl font-bold text-purple-600">0</div>
+                              <div className="text-sm text-slate-500">this month</div>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
