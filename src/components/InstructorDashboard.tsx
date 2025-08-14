@@ -72,15 +72,15 @@ const InstructorDashboard: React.FC = () => {
   const uniqueCentres = currentUser?.role === 'instructor' && currentUser.centre_name 
     ? [currentUser.centre_name.toUpperCase()]
     : [
-        "DIKWA DIGITAL LITERACY CENTRE",
-        "GAJIRAM ICT CENTER", 
-        "GUBIO DIGITAL LITERACY CENTRE",
-        "KAGA DIGITAL LITERACY CENTRE",
-        "MONGUNO DIGITAL LITERACY CENTRE",
-        "MAFA DIGITAL LITERACY CENTRE",
-        "DAMASAK DIGITAL LITERACY CENTER",
-        "BAYO DIGITAL LITERACY CENTER"
-      ];
+            "DIKWA DIGITAL LITERACY CENTRE",
+    "GAJIRAM ICT CENTER", 
+    "GUBIO DIGITAL LITERACY CENTRE",
+    "KAGA DIGITAL LITERACY CENTRE",
+    "MONGUNO DIGITAL LITERACY CENTRE",
+    "MAFA DIGITAL LITERACY CENTRE",
+    "DAMASAK DIGITAL LITERACY CENTER",
+    "BAYO DIGITAL LITERACY CENTER"
+  ];
   const uniqueCohorts = [...new Set(trainees?.map(t => t.cohort_number?.toString() || '') || [])].filter(cohort => cohort && cohort !== '0').sort();
 
   // Show skeleton loaders instead of blocking the entire dashboard
@@ -91,7 +91,7 @@ const InstructorDashboard: React.FC = () => {
         <div className="h-3 bg-slate-200 rounded"></div>
         <div className="h-3 bg-slate-200 rounded w-2/3"></div>
         <div className="h-3 bg-slate-200 rounded w-1/2"></div>
-      </div>
+        </div>
       </div>
     );
 
@@ -418,17 +418,17 @@ const InstructorDashboard: React.FC = () => {
                   </div>
                 ) : (
                   // Full access for admins
-                  <Select value={selectedCentre} onValueChange={setSelectedCentre}>
-                    <SelectTrigger className="bg-white/80 border-slate-200 rounded-xl h-12">
-                      <SelectValue placeholder="Select Centre" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Training Centres</SelectItem>
-                      {uniqueCentres.map(centre => (
-                        <SelectItem key={centre} value={centre}>{centre}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <Select value={selectedCentre} onValueChange={setSelectedCentre}>
+                  <SelectTrigger className="bg-white/80 border-slate-200 rounded-xl h-12">
+                    <SelectValue placeholder="Select Centre" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Training Centres</SelectItem>
+                    {uniqueCentres.map(centre => (
+                      <SelectItem key={centre} value={centre}>{centre}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 )}
               </div>
               
@@ -702,7 +702,7 @@ const InstructorDashboard: React.FC = () => {
                   Dropout
                 </Button>
               </div>
-            </div>
+        </div>
 
             <div className="flex gap-3 pt-4">
                 <Button

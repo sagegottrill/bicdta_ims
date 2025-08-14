@@ -101,7 +101,7 @@ const AdminDashboard: React.FC = () => {
         <div className="h-3 bg-slate-200 rounded"></div>
         <div className="h-3 bg-slate-200 rounded w-2/3"></div>
         <div className="h-3 bg-slate-200 rounded w-1/2"></div>
-      </div>
+        </div>
       </div>
     );
 

@@ -8,11 +8,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAppContext } from '@/contexts/AppContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { sendPasswordResetEmail } from '@/lib/firebase';
 import { GraduationCap, Shield, Building2, Users, BookOpen, Globe, Sparkles, Eye, EyeOff, CheckCircle, AlertCircle, Loader2, ArrowRight, Zap, Target, Award, UserPlus } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import InstructorSignup from './InstructorSignup';
 
 const LoginPage: React.FC = () => {
-  const { login } = useAppContext();
+  const { login, checkAdminUser } = useAppContext();
   const { t, language, setLanguage } = useLanguage();
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
@@ -23,6 +25,9 @@ const LoginPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [showSignup, setShowSignup] = useState(false);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [showResetDialog, setShowResetDialog] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
   const navigate = useNavigate();
 
   const handleAdminLogin = async (e: React.FormEvent) => {
@@ -60,6 +65,36 @@ const LoginPage: React.FC = () => {
       setError(err.message || 'Login failed. Please try again.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleInstructorPasswordReset = () => {
+    setResetEmail('');
+    setShowResetDialog(true);
+  };
+
+  const confirmPasswordReset = async () => {
+    if (!resetEmail.trim()) {
+      setError('Please enter an email address.');
+      return;
+    }
+    
+    setIsResettingPassword(true);
+    setError('');
+    
+    try {
+      // Send password reset email using Firebase
+      await sendPasswordResetEmail(resetEmail.trim());
+      
+      // Show success message
+      setError('Password reset link has been sent to your email address. Please check your inbox.');
+      // Clear the error after 5 seconds
+      setTimeout(() => setError(''), 5000);
+      setShowResetDialog(false);
+    } catch (err: any) {
+      setError(err.message || 'Failed to send password reset email. Please try again.');
+    } finally {
+      setIsResettingPassword(false);
     }
   };
 
@@ -262,6 +297,8 @@ const LoginPage: React.FC = () => {
                         )}
                       </Button>
                     </form>
+
+
                   </TabsContent>
 
                   <TabsContent value="instructor" className="space-y-3 mt-4">
@@ -329,6 +366,28 @@ const LoginPage: React.FC = () => {
                       </Button>
                     </form>
                     
+                    {/* Reset Password Button */}
+                    <div className="text-center pt-2">
+                      <Button 
+                        type="button" 
+                        onClick={handleInstructorPasswordReset}
+                        className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white py-2 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105"
+                        disabled={isResettingPassword}
+                      >
+                        {isResettingPassword ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Sending Reset Link...
+                          </>
+                        ) : (
+                          <>
+                            <Zap className="w-4 h-4 mr-2" />
+                            Reset Password
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    
                     {/* Sign Up Option */}
                     <div className="text-center pt-4 border-t border-slate-200">
                       <p className="text-sm text-slate-600 mb-3">New instructor?</p>
@@ -349,6 +408,66 @@ const LoginPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Password Reset Dialog */}
+      <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Zap className="w-5 h-5 text-orange-500" />
+              Reset Password
+            </DialogTitle>
+            <DialogDescription>
+              Enter your instructor email address to receive a password reset link.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="reset-email" className="text-sm font-medium">
+                Email Address
+              </Label>
+              <Input
+                id="reset-email"
+                type="email"
+                value={resetEmail}
+                onChange={(e) => setResetEmail(e.target.value)}
+                placeholder="Enter your email address"
+                className="w-full"
+                disabled={isResettingPassword}
+              />
+            </div>
+            
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setShowResetDialog(false)}
+                className="flex-1"
+                disabled={isResettingPassword}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={confirmPasswordReset}
+                className="flex-1 bg-orange-500 hover:bg-orange-600"
+                disabled={isResettingPassword || !resetEmail.trim()}
+              >
+                {isResettingPassword ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Checking...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-4 h-4 mr-2" />
+                    Send Reset Link
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

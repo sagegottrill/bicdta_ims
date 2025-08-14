@@ -8,7 +8,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAppContext } from '@/contexts/AppContext';
 import { useToast } from '@/hooks/use-toast';
-import { X, BarChart3, Target, Calendar, Users, TrendingUp, FileText, Save, Building, Wifi, Zap, Droplets, Wind, Monitor } from 'lucide-react';
+import { X, BarChart3, Target, Calendar, Users, TrendingUp, FileText, Save, Building, Wifi, Zap, Droplets, Wind, Monitor, Upload, FileImage, Video, Trash2 } from 'lucide-react';
+import { uploadWeeklyReportFiles, uploadMEReportFiles } from '@/lib/googleDrive';
 
 interface CombinedReportsFormProps {
   onClose: () => void;
@@ -19,6 +20,9 @@ const CombinedReportsForm: React.FC<CombinedReportsFormProps> = ({ onClose }) =>
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('weekly');
   const [loading, setLoading] = useState(false);
+  const [weeklyFiles, setWeeklyFiles] = useState<File[]>([]);
+  const [monthlyFiles, setMonthlyFiles] = useState<File[]>([]);
+  const [uploadingFiles, setUploadingFiles] = useState(false);
 
   // Weekly Report Form Data
   const [weeklyData, setWeeklyData] = useState({
@@ -66,6 +70,54 @@ const CombinedReportsForm: React.FC<CombinedReportsFormProps> = ({ onClose }) =>
     water_functional: '',
   });
 
+  const handleWeeklyFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    setWeeklyFiles(prev => [...prev, ...files]);
+  };
+
+  const removeWeeklyFile = (index: number) => {
+    setWeeklyFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleMonthlyFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    setMonthlyFiles(prev => [...prev, ...files]);
+  };
+
+  const removeMonthlyFile = (index: number) => {
+    setMonthlyFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const uploadWeeklyFilesToGoogleDrive = async () => {
+    if (weeklyFiles.length === 0) return [];
+    
+    setUploadingFiles(true);
+    try {
+      const results = await uploadWeeklyReportFiles(weeklyFiles, weeklyData.centre_name);
+      setUploadingFiles(false);
+      return results.filter(result => result.success).map(result => result.file);
+    } catch (error) {
+      setUploadingFiles(false);
+      toast({ title: 'Error', description: 'Failed to upload files', variant: 'destructive' });
+      return [];
+    }
+  };
+
+  const uploadMonthlyFilesToGoogleDrive = async () => {
+    if (monthlyFiles.length === 0) return [];
+    
+    setUploadingFiles(true);
+    try {
+      const results = await uploadMEReportFiles(monthlyFiles, monthlyData.centre_name);
+      setUploadingFiles(false);
+      return results.filter(result => result.success).map(result => result.file);
+    } catch (error) {
+      setUploadingFiles(false);
+      toast({ title: 'Error', description: 'Failed to upload files', variant: 'destructive' });
+      return [];
+    }
+  };
+
   const handleWeeklySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -76,6 +128,9 @@ const CombinedReportsForm: React.FC<CombinedReportsFormProps> = ({ onClose }) =>
 
     setLoading(true);
     try {
+      // Upload files to Google Drive first
+      const uploadedFileData = await uploadWeeklyFilesToGoogleDrive();
+      
       await addWeeklyReport({
         centre_name: weeklyData.centre_name,
         technical_manager_name: weeklyData.technical_manager_name,
@@ -86,6 +141,7 @@ const CombinedReportsForm: React.FC<CombinedReportsFormProps> = ({ onClose }) =>
         trainees_enrolled: parseInt(weeklyData.trainees_enrolled) || 0,
         trainees_completed: parseInt(weeklyData.trainees_completed) || 0,
         trainees_dropped: parseInt(weeklyData.trainees_dropped) || 0,
+        attached_files: uploadedFileData, // Add uploaded files data
       });
       toast({ title: 'Success', description: 'Weekly report submitted successfully!' });
       setWeeklyData({
@@ -116,6 +172,9 @@ const CombinedReportsForm: React.FC<CombinedReportsFormProps> = ({ onClose }) =>
 
     setLoading(true);
     try {
+      // Upload files to Google Drive first
+      const uploadedFileData = await uploadMonthlyFilesToGoogleDrive();
+      
       await addMEReport({
         centre_name: monthlyData.centre_name,
         technical_manager_name: monthlyData.technical_manager_name,
@@ -123,6 +182,7 @@ const CombinedReportsForm: React.FC<CombinedReportsFormProps> = ({ onClose }) =>
         year: parseInt(monthlyData.year),
         report_date: monthlyData.report_date,
         comments: monthlyData.comments,
+        attached_files: uploadedFileData, // Add uploaded files data
       });
       toast({ title: 'Success', description: 'Monthly report submitted successfully!' });
       setMonthlyData({
@@ -425,6 +485,76 @@ const CombinedReportsForm: React.FC<CombinedReportsFormProps> = ({ onClose }) =>
                   />
                 </div>
 
+                {/* File Upload Section */}
+                <div className="space-y-4">
+                  <div>
+                    <Label>Attach Files (Pictures & Videos)</Label>
+                    <p className="text-sm text-slate-500 mb-2">
+                      Upload photos and videos related to this week's activities (Max 30MB per file)
+                    </p>
+                    
+                    <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-slate-400 transition-colors">
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/*,video/*"
+                        onChange={handleWeeklyFileUpload}
+                        className="hidden"
+                        id="weekly-file-upload"
+                      />
+                      <label htmlFor="weekly-file-upload" className="cursor-pointer">
+                        <Upload className="w-8 h-8 mx-auto text-slate-400 mb-2" />
+                        <p className="text-slate-600 font-medium">Click to upload files</p>
+                        <p className="text-sm text-slate-500">or drag and drop</p>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Uploaded Files List */}
+                  {weeklyFiles.length > 0 && (
+                    <div className="space-y-2">
+                      <Label>Uploaded Files ({weeklyFiles.length})</Label>
+                      <div className="space-y-2 max-h-40 overflow-y-auto">
+                        {weeklyFiles.map((file, index) => (
+                          <div key={index} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                            <div className="flex items-center gap-3">
+                              {file.type.startsWith('image/') ? (
+                                <FileImage className="w-5 h-5 text-blue-500" />
+                              ) : file.type.startsWith('video/') ? (
+                                <Video className="w-5 h-5 text-red-500" />
+                              ) : (
+                                <FileText className="w-5 h-5 text-slate-500" />
+                              )}
+                              <div>
+                                <p className="text-sm font-medium text-slate-700">{file.name}</p>
+                                <p className="text-xs text-slate-500">
+                                  {(file.size / 1024 / 1024).toFixed(2)} MB
+                                </p>
+                              </div>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeWeeklyFile(index)}
+                              className="text-red-500 hover:text-red-700"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {uploadingFiles && (
+                    <div className="text-center py-4">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                      <p className="text-sm text-slate-600 mt-2">Uploading files to Google Drive...</p>
+                    </div>
+                  )}
+                </div>
+
                 <div className="flex gap-3 pt-4">
                   <Button 
                     type="button" 
@@ -541,6 +671,76 @@ const CombinedReportsForm: React.FC<CombinedReportsFormProps> = ({ onClose }) =>
                     placeholder="Provide detailed analysis of monthly performance, challenges, achievements, recommendations, and impact assessment..."
                     className="mt-1 min-h-[120px]"
                   />
+                </div>
+
+                {/* File Upload Section */}
+                <div className="space-y-4">
+                  <div>
+                    <Label>Attach Supporting Documents (Pictures & Videos)</Label>
+                    <p className="text-sm text-slate-500 mb-2">
+                      Upload photos, videos, and documents supporting this month's evaluation (Max 30MB per file)
+                    </p>
+                    
+                    <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-slate-400 transition-colors">
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/*,video/*,.pdf,.doc,.docx"
+                        onChange={handleMonthlyFileUpload}
+                        className="hidden"
+                        id="monthly-file-upload"
+                      />
+                      <label htmlFor="monthly-file-upload" className="cursor-pointer">
+                        <Upload className="w-8 h-8 mx-auto text-slate-400 mb-2" />
+                        <p className="text-slate-600 font-medium">Click to upload files</p>
+                        <p className="text-sm text-slate-500">or drag and drop</p>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Uploaded Files List */}
+                  {monthlyFiles.length > 0 && (
+                    <div className="space-y-2">
+                      <Label>Uploaded Files ({monthlyFiles.length})</Label>
+                      <div className="space-y-2 max-h-40 overflow-y-auto">
+                        {monthlyFiles.map((file, index) => (
+                          <div key={index} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                            <div className="flex items-center gap-3">
+                              {file.type.startsWith('image/') ? (
+                                <FileImage className="w-5 h-5 text-blue-500" />
+                              ) : file.type.startsWith('video/') ? (
+                                <Video className="w-5 h-5 text-red-500" />
+                              ) : (
+                                <FileText className="w-5 h-5 text-slate-500" />
+                              )}
+                              <div>
+                                <p className="text-sm font-medium text-slate-700">{file.name}</p>
+                                <p className="text-xs text-slate-500">
+                                  {(file.size / 1024 / 1024).toFixed(2)} MB
+                                </p>
+                              </div>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeMonthlyFile(index)}
+                              className="text-red-500 hover:text-red-700"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {uploadingFiles && (
+                    <div className="text-center py-4">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto"></div>
+                      <p className="text-sm text-slate-600 mt-2">Uploading files to Google Drive...</p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex gap-3 pt-4">

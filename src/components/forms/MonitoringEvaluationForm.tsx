@@ -7,8 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useAppContext } from '@/contexts/AppContext';
 import { useToast } from '@/hooks/use-toast';
-import { X, Upload, FileImage, Video, FileText, Trash2, BarChart3, Target, TrendingUp } from 'lucide-react';
-import { uploadMEReportFiles } from '@/lib/googleDrive';
+import { X, BarChart3, Target, TrendingUp } from 'lucide-react';
 
 interface MonitoringEvaluationFormProps {
   onClose: () => void;
@@ -37,8 +36,6 @@ const MonitoringEvaluationForm: React.FC<MonitoringEvaluationFormProps> = ({ onC
     community_impact: '',
   });
   const [loading, setLoading] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
-  const [uploadingFiles, setUploadingFiles] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,9 +45,6 @@ const MonitoringEvaluationForm: React.FC<MonitoringEvaluationFormProps> = ({ onC
     }
     setLoading(true);
     try {
-      // Upload files to Google Drive first
-      const uploadedFileData = await uploadFilesToGoogleDrive();
-      
       await addMEReport({
         centre_name: formData.centre_name,
         technical_manager_name: formData.technical_manager_name,
@@ -84,29 +78,7 @@ const MonitoringEvaluationForm: React.FC<MonitoringEvaluationFormProps> = ({ onC
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    setUploadedFiles(prev => [...prev, ...files]);
-  };
 
-  const removeFile = (index: number) => {
-    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const uploadFilesToGoogleDrive = async () => {
-    if (uploadedFiles.length === 0) return [];
-    
-    setUploadingFiles(true);
-    try {
-      const results = await uploadMEReportFiles(uploadedFiles, formData.centre_name);
-      setUploadingFiles(false);
-      return results.filter(result => result.success).map(result => result.file);
-    } catch (error) {
-      setUploadingFiles(false);
-      toast({ title: 'Error', description: 'Failed to upload files', variant: 'destructive' });
-      return [];
-    }
-  };
 
   const availableCentres = centres.map(centre => centre.centre_name);
 
@@ -402,81 +374,13 @@ const MonitoringEvaluationForm: React.FC<MonitoringEvaluationFormProps> = ({ onC
               </div>
             </div>
 
-            {/* File Upload Section */}
-            <div className="space-y-4">
-              <div>
-                <Label>Attach Supporting Documents (Pictures & Videos)</Label>
-                <p className="text-sm text-slate-500 mb-2">
-                  Upload photos, videos, and documents supporting this evaluation (Max 30MB per file)
-                </p>
-                
-                <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-slate-400 transition-colors">
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/*,video/*,.pdf,.doc,.docx"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                    id="file-upload"
-                  />
-                  <label htmlFor="file-upload" className="cursor-pointer">
-                    <Upload className="w-8 h-8 mx-auto text-slate-400 mb-2" />
-                    <p className="text-slate-600 font-medium">Click to upload files</p>
-                    <p className="text-sm text-slate-500">or drag and drop</p>
-                  </label>
-                </div>
-              </div>
 
-              {/* Uploaded Files List */}
-              {uploadedFiles.length > 0 && (
-                <div className="space-y-2">
-                  <Label>Uploaded Files ({uploadedFiles.length})</Label>
-                  <div className="space-y-2 max-h-40 overflow-y-auto">
-                    {uploadedFiles.map((file, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                        <div className="flex items-center gap-3">
-                          {file.type.startsWith('image/') ? (
-                            <FileImage className="w-5 h-5 text-blue-500" />
-                          ) : file.type.startsWith('video/') ? (
-                            <Video className="w-5 h-5 text-red-500" />
-                          ) : (
-                            <FileText className="w-5 h-5 text-slate-500" />
-                          )}
-                          <div>
-                            <p className="text-sm font-medium text-slate-700">{file.name}</p>
-                            <p className="text-xs text-slate-500">
-                              {(file.size / 1024 / 1024).toFixed(2)} MB
-                            </p>
-                          </div>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeFile(index)}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {uploadingFiles && (
-                <div className="text-center py-4">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
-                  <p className="text-sm text-slate-600 mt-2">Uploading files to Google Drive...</p>
-                </div>
-              )}
-            </div>
 
             <div className="flex justify-end gap-3 pt-4">
               <Button type="button" variant="outline" onClick={onClose}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={loading || uploadingFiles}>
+              <Button type="submit" disabled={loading}>
                 {loading ? 'Submitting...' : 'Submit M&E Report'}
               </Button>
             </div>

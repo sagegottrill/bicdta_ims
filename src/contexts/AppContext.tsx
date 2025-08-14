@@ -8,7 +8,9 @@ import {
   signOutUser, 
   onAuthStateChange, 
   getUserData,
-  addInstructorToFirestore 
+  addInstructorToFirestore,
+  checkUserExists,
+  sendPasswordResetEmail
 } from '@/lib/firebase';
 
 import { sendApprovalEmail, sendRejectionEmail } from '@/lib/emailService';
@@ -140,6 +142,7 @@ interface AppContextType {
   announcements: Announcement[];
   addAnnouncement: (message: string) => Promise<void>;
   announcementsLoading: boolean;
+  checkAdminUser: (email: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -553,7 +556,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         console.warn('⚠️ Firebase authentication failed:', firebaseError);
         
         // For development: Allow admin login with hardcoded credentials
-        if (role === 'admin' && email === 'admin@bictda.com' && password === 'admin123') {
+        if (role === 'admin' && (email === 'admin@bictda.com' || email === 'Admin.wanori@ims.com') && password === 'Wanoriims@1#') {
           console.log('🔄 Using development admin login');
           user = { email, uid: 'dev-admin-uid' };
         } else {
@@ -690,16 +693,50 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Add trainee to Supabase
   const addTrainee = async (trainee: Omit<Trainee, 'id'>) => {
     try {
+      console.log('🚀 Adding trainee to Supabase:', trainee);
+      
+      // Validate required fields
+      if (!trainee.full_name || !trainee.id_number || !trainee.gender) {
+        throw new Error('Missing required fields: full name, ID number, and gender are required');
+      }
+
+      // Check if trainee with same ID already exists
+      const { data: existingTrainee, error: checkError } = await supabase
+        .from('trainees')
+        .select('id, full_name')
+        .eq('id_number', trainee.id_number)
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error('❌ Error checking for existing trainee:', checkError);
+        throw new Error('Failed to check for existing trainee');
+      }
+
+      if (existingTrainee) {
+        throw new Error(`A trainee with ID number "${trainee.id_number}" already exists`);
+      }
+
       const { data, error } = await supabase
         .from('trainees')
         .insert([trainee])
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Supabase error adding trainee:', error);
+        if (error.code === '23505') {
+          throw new Error('A trainee with this ID number already exists');
+        } else if (error.code === '42P01') {
+          throw new Error('Trainees table does not exist. Please contact administrator.');
+        } else {
+          throw new Error(`Failed to add trainee: ${error.message}`);
+        }
+      }
+
+      console.log('✅ Trainee added successfully:', data);
       setTrainees(prev => [...prev, data]);
-    } catch (error) {
-      console.error('Error adding trainee:', error);
+    } catch (error: any) {
+      console.error('❌ Error adding trainee:', error);
       throw error;
     }
   };
@@ -1013,16 +1050,50 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Add centre to Supabase
   const addCentre = async (centre: Omit<Centre, 'id'>) => {
     try {
+      console.log('🚀 Adding centre to Supabase:', centre);
+      
+      // Validate required fields
+      if (!centre.centre_name || !centre.lga || !centre.technical_manager_name) {
+        throw new Error('Missing required fields: centre name, LGA, and technical manager name are required');
+      }
+
+      // Check if centre with same name already exists
+      const { data: existingCentre, error: checkError } = await supabase
+        .from('centres')
+        .select('id, centre_name')
+        .eq('centre_name', centre.centre_name)
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error('❌ Error checking for existing centre:', checkError);
+        throw new Error('Failed to check for existing centre');
+      }
+
+      if (existingCentre) {
+        throw new Error(`A centre with name "${centre.centre_name}" already exists`);
+      }
+
       const { data, error } = await supabase
         .from('centres')
         .insert([centre])
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Supabase error adding centre:', error);
+        if (error.code === '23505') {
+          throw new Error('A centre with this name already exists');
+        } else if (error.code === '42P01') {
+          throw new Error('Centres table does not exist. Please contact administrator.');
+        } else {
+          throw new Error(`Failed to add centre: ${error.message}`);
+        }
+      }
+
+      console.log('✅ Centre added successfully:', data);
       setCentres(prev => [...prev, data]);
-    } catch (error) {
-      console.error('Error adding centre:', error);
+    } catch (error: any) {
+      console.error('❌ Error adding centre:', error);
       throw error;
     }
   };
@@ -1060,35 +1131,110 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Add weekly report to Supabase
-  const addWeeklyReport = async (report: Omit<WeeklyReport, 'id'>) => {
+  const addWeeklyReport = async (report: Omit<WeeklyReport, 'id' | 'attached_files'>) => {
     try {
+      console.log('🚀 Adding weekly report to Supabase:', report);
+      
+      // Validate required fields
+      if (!report.centre_name || !report.technical_manager_name || !report.week_number) {
+        throw new Error('Missing required fields: centre name, technical manager name, and week number are required');
+      }
+
+      // Check if report for this centre and week already exists
+      const { data: existingReport, error: checkError } = await supabase
+        .from('weekly_reports')
+        .select('id, centre_name, week_number, year')
+        .eq('centre_name', report.centre_name)
+        .eq('week_number', report.week_number)
+        .eq('year', report.year)
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error('❌ Error checking for existing report:', checkError);
+        throw new Error('Failed to check for existing report');
+      }
+
+      if (existingReport) {
+        throw new Error(`A weekly report for ${report.centre_name} (Week ${report.week_number}, ${report.year}) already exists`);
+      }
+
       const { data, error } = await supabase
         .from('weekly_reports')
         .insert([report])
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Supabase error adding weekly report:', error);
+        if (error.code === '23505') {
+          throw new Error('A weekly report for this centre and week already exists');
+        } else if (error.code === '42P01') {
+          throw new Error('Weekly reports table does not exist. Please contact administrator.');
+        } else {
+          throw new Error(`Failed to add weekly report: ${error.message}`);
+        }
+      }
+
+      console.log('✅ Weekly report added successfully:', data);
       setWeeklyReports(prev => [...prev, data]);
-    } catch (error) {
-      console.error('Error adding weekly report:', error);
+    } catch (error: any) {
+      console.error('❌ Error adding weekly report:', error);
       throw error;
     }
   };
 
   // Add M&E report to Supabase
-  const addMEReport = async (report: Omit<MEReport, 'id'>) => {
+  const addMEReport = async (report: Omit<MEReport, 'id' | 'attached_files'>) => {
     try {
+      console.log('🚀 Adding M&E report to Supabase:', report);
+      
+      // Validate required fields
+      if (!report.centre_name || !report.technical_manager_name || !report.month) {
+        throw new Error('Missing required fields: centre name, technical manager name, and month are required');
+      }
+
+      // Check if report for this centre and month already exists
+      const { data: existingReport, error: checkError } = await supabase
+        .from('me_reports')
+        .select('id, centre_name, month, year')
+        .eq('centre_name', report.centre_name)
+        .eq('month', report.month)
+        .eq('year', report.year)
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error('❌ Error checking for existing M&E report:', checkError);
+        throw new Error('Failed to check for existing M&E report');
+      }
+
+      if (existingReport) {
+        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                           'July', 'August', 'September', 'October', 'November', 'December'];
+        const monthName = monthNames[report.month - 1] || `Month ${report.month}`;
+        throw new Error(`An M&E report for ${report.centre_name} (${monthName} ${report.year}) already exists`);
+      }
+
       const { data, error } = await supabase
         .from('me_reports')
         .insert([report])
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Supabase error adding M&E report:', error);
+        if (error.code === '23505') {
+          throw new Error('An M&E report for this centre and month already exists');
+        } else if (error.code === '42P01') {
+          throw new Error('M&E reports table does not exist. Please contact administrator.');
+        } else {
+          throw new Error(`Failed to add M&E report: ${error.message}`);
+        }
+      }
+
+      console.log('✅ M&E report added successfully:', data);
       setMEReports(prev => [...prev, data]);
-    } catch (error) {
-      console.error('Error adding M&E report:', error);
+    } catch (error: any) {
+      console.error('❌ Error adding M&E report:', error);
       throw error;
     }
   };
@@ -1191,6 +1337,50 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  // Function to check if admin user exists and reset password
+  const checkAdminUser = async (email: string) => {
+    try {
+      console.log('🔍 Checking if admin user exists:', email);
+      const exists = await checkUserExists(email);
+      
+      if (exists) {
+        console.log('✅ Admin user exists in Firebase');
+        
+        // Send password reset email
+        try {
+          await sendPasswordResetEmail(email);
+          console.log('📧 Password reset email sent to:', email);
+          toast({
+            title: "Password Reset Sent",
+            description: `A password reset email has been sent to ${email}. Please check your inbox.`,
+            duration: 5000,
+          });
+        } catch (resetError: any) {
+          console.error('❌ Error sending password reset:', resetError);
+          toast({
+            title: "Password Reset Failed",
+            description: resetError.message,
+            duration: 5000,
+          });
+        }
+      } else {
+        console.log('❌ Admin user does not exist in Firebase');
+        toast({
+          title: "User Not Found",
+          description: `No account found with email ${email}. Please create the account first.`,
+          duration: 5000,
+        });
+      }
+    } catch (error: any) {
+      console.error('❌ Error checking admin user:', error);
+      toast({
+        title: "Error",
+        description: error.message,
+        duration: 5000,
+      });
+    }
+  };
+
   // Manual migration function to add Daniel's data
   const migrateDanielToSupabase = async () => {
     try {
@@ -1266,7 +1456,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         getCentresByCentreName,
         announcements,
         addAnnouncement,
-        announcementsLoading
+        announcementsLoading,
+        checkAdminUser
       }}
     >
       {children}

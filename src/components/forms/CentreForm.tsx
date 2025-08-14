@@ -66,9 +66,9 @@ const CentreForm: React.FC<CentreFormProps> = ({ onClose }) => {
         lighting_available: formData.lighting_available === 'yes',
         windows_condition: formData.windows_condition,
         water_functional: formData.water_functional === 'yes',
-      });
-      toast({ title: 'Success', description: 'Centre added successfully!' });
-      onClose();
+    });
+    toast({ title: 'Success', description: 'Centre added successfully!' });
+    onClose();
     } catch (err) {
       toast({ title: 'Error', description: 'Failed to add centre', variant: 'destructive' });
     } finally {
@@ -88,28 +88,28 @@ const CentreForm: React.FC<CentreFormProps> = ({ onClose }) => {
           <Button variant="ghost" size="sm" onClick={onClose}>
             <X className="w-4 h-4" />
           </Button>
-        </CardHeader>
-        <CardContent>
+      </CardHeader>
+      <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="centre_name">Centre Name *</Label>
-                <Input
+              <Input
                   id="centre_name"
                   value={formData.centre_name}
                   onChange={(e) => handleChange('centre_name', e.target.value)}
-                  placeholder="Enter centre name"
+                placeholder="Enter centre name"
                   className="mt-1"
-                />
-              </div>
+              />
+            </div>
 
               <div>
                 <Label htmlFor="lga">LGA *</Label>
-                <Input
+              <Input
                   id="lga"
                   value={formData.lga}
                   onChange={(e) => handleChange('lga', e.target.value)}
-                  placeholder="Enter LGA"
+                placeholder="Enter LGA"
                   className="mt-1"
                 />
               </div>
@@ -169,45 +169,45 @@ const CentreForm: React.FC<CentreFormProps> = ({ onClose }) => {
                   onChange={(e) => handleChange('usable_capacity', e.target.value)}
                   placeholder="Enter usable capacity"
                   className="mt-1"
-                />
-              </div>
+              />
+            </div>
 
               <div>
                 <Label htmlFor="computers_present">Computers Present</Label>
-                <Input
+              <Input
                   id="computers_present"
-                  type="number"
+                type="number"
                   value={formData.computers_present}
                   onChange={(e) => handleChange('computers_present', e.target.value)}
                   placeholder="Enter number of computers"
                   className="mt-1"
-                />
-              </div>
+              />
+            </div>
 
               <div>
                 <Label htmlFor="computers_functional">Computers Functional</Label>
-                <Input
+              <Input
                   id="computers_functional"
-                  type="number"
+                type="number"
                   value={formData.computers_functional}
                   onChange={(e) => handleChange('computers_functional', e.target.value)}
                   placeholder="Enter number of functional computers"
                   className="mt-1"
-                />
-              </div>
+              />
+            </div>
 
               <div>
                 <Label htmlFor="power_available">Power Available</Label>
                 <Select value={formData.power_available} onValueChange={(value) => handleChange('power_available', value)}>
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="Select power availability" />
-                  </SelectTrigger>
-                  <SelectContent>
+                </SelectTrigger>
+                <SelectContent>
                     <SelectItem value="yes">Yes</SelectItem>
                     <SelectItem value="no">No</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                </SelectContent>
+              </Select>
+            </div>
 
               <div>
                 <Label htmlFor="power_condition">Power Condition</Label>
@@ -225,13 +225,13 @@ const CentreForm: React.FC<CentreFormProps> = ({ onClose }) => {
                 <Select value={formData.internet_available} onValueChange={(value) => handleChange('internet_available', value)}>
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="Select internet availability" />
-                  </SelectTrigger>
-                  <SelectContent>
+                </SelectTrigger>
+                <SelectContent>
                     <SelectItem value="yes">Yes</SelectItem>
                     <SelectItem value="no">No</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                </SelectContent>
+              </Select>
+            </div>
 
               <div>
                 <Label htmlFor="fans_present">Fans Present</Label>
@@ -243,19 +243,19 @@ const CentreForm: React.FC<CentreFormProps> = ({ onClose }) => {
                   placeholder="Enter number of fans"
                   className="mt-1"
                 />
-              </div>
+          </div>
 
               <div>
                 <Label htmlFor="fans_functional">Fans Functional</Label>
-                <Input
+            <Input
                   id="fans_functional"
                   type="number"
                   value={formData.fans_functional}
                   onChange={(e) => handleChange('fans_functional', e.target.value)}
                   placeholder="Enter number of functional fans"
                   className="mt-1"
-                />
-              </div>
+            />
+          </div>
 
               <div>
                 <Label htmlFor="lighting_available">Lighting Available</Label>
@@ -298,16 +298,16 @@ const CentreForm: React.FC<CentreFormProps> = ({ onClose }) => {
             </div>
 
             <div className="flex justify-end gap-3 pt-4">
-              <Button type="button" variant="outline" onClick={onClose}>
-                Cancel
-              </Button>
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
               <Button type="submit" disabled={loading}>
                 {loading ? 'Adding...' : 'Add Centre'}
               </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
     </div>
   );
 };

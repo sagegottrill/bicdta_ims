@@ -106,6 +106,39 @@ export const getUserData = async (uid: string) => {
   }
 };
 
+// Check if user exists in Firebase Auth
+export const checkUserExists = async (email: string) => {
+  try {
+    // Try to sign in with a dummy password to check if user exists
+    // This will fail with 'auth/wrong-password' if user exists, or 'auth/user-not-found' if not
+    await signInWithEmailAndPassword(auth, email, 'dummy-password-for-check');
+    return true; // This shouldn't reach here if password is wrong
+  } catch (error: any) {
+    if (error.code === 'auth/wrong-password') {
+      return true; // User exists, just wrong password
+    } else if (error.code === 'auth/user-not-found') {
+      return false; // User doesn't exist
+    } else {
+      throw error; // Other error
+    }
+  }
+};
+
+// Send password reset email
+export const sendPasswordResetEmail = async (email: string) => {
+  try {
+    const { sendPasswordResetEmail: sendReset } = await import('firebase/auth');
+    await sendReset(auth, email);
+    return true;
+  } catch (error: any) {
+    if (error.code === 'auth/user-not-found') {
+      throw new Error('No account found with this email address.');
+    } else {
+      throw new Error(error.message || 'Failed to send password reset email.');
+    }
+  }
+};
+
 export const updateUserData = async (uid: string, data: any) => {
   try {
     await updateDoc(doc(db, 'users', uid), data);
