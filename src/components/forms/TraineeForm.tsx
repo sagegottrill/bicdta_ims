@@ -192,9 +192,9 @@ const TraineeForm: React.FC<TraineeFormProps> = ({ onClose, availableCentres = [
                     <SelectValue placeholder="Select centre" />
                   </SelectTrigger>
                   <SelectContent>
-                    {availableCentres.map(centre => (
-                      <SelectItem key={centre} value={centre}>{centre}</SelectItem>
-                    ))}
+                      {["DIKWA DIGITAL LITERACY CENTRE", "GAJIRAM ICT CENTER", "GUBIO DIGITAL LITERACY CENTRE", "KAGA DIGITAL LITERACY CENTRE", "MONGUNO DIGITAL LITERACY CENTRE", "MAFA DIGITAL LITERACY CENTRE", "DAMASAK DIGITAL LITERACY CENTER", "BAYO DIGITAL LITERACY CENTER", "DAMBOA DIGITAL LITERACY CENTER", ...(availableCentres || [])].map(centre => (
+                        <SelectItem key={centre} value={centre}>{centre}</SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>

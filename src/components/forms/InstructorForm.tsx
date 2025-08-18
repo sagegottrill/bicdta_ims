@@ -118,13 +118,16 @@ const InstructorForm: React.FC<InstructorFormProps> = ({ onClose }) => {
 
               <div>
                 <Label htmlFor="centre_name">Assigned Centre</Label>
-                <Input
-                  id="centre_name"
-                  value={formData.centre_name}
-                  onChange={(e) => handleChange('centre_name', e.target.value)}
-                  placeholder="Enter assigned centre (optional)"
-                  className="mt-1"
-                />
+                  <Select value={formData.centre_name} onValueChange={(value) => handleChange('centre_name', value)}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Select centre" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {["DIKWA DIGITAL LITERACY CENTRE", "GAJIRAM ICT CENTER", "GUBIO DIGITAL LITERACY CENTRE", "KAGA DIGITAL LITERACY CENTRE", "MONGUNO DIGITAL LITERACY CENTRE", "MAFA DIGITAL LITERACY CENTRE", "DAMASAK DIGITAL LITERACY CENTER", "BAYO DIGITAL LITERACY CENTER", "DAMBOA DIGITAL LITERACY CENTER"].map(centre => (
+                        <SelectItem key={centre} value={centre}>{centre}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
               </div>
             </div>
 
