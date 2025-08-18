@@ -161,29 +161,14 @@ const TraineeForm: React.FC<TraineeFormProps> = ({ onClose, availableCentres = [
 
               <div>
                 <Label htmlFor="age">Age</Label>
-                <Input
-                  id="age"
-                  type="number"
-                  value={formData.age}
-                  onChange={(e) => handleChange('age', e.target.value)}
-                  placeholder="Enter age"
-                  className="mt-1"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="educational_background">Educational Background</Label>
-                <Select value={formData.educational_background} onValueChange={(value) => handleChange('educational_background', value)}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select education" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="primary">Primary</SelectItem>
-                    <SelectItem value="secondary">Secondary</SelectItem>
-                    <SelectItem value="tertiary">Tertiary</SelectItem>
-                    <SelectItem value="none">None</SelectItem>
-                  </SelectContent>
-                </Select>
+                  <Input
+                    id="age"
+                    type="number"
+                    value={formData.age}
+                    onChange={(e) => handleChange('age', e.target.value)}
+                    placeholder="Enter age"
+                    className="mt-1"
+                  />
               </div>
 
               <div>
@@ -226,27 +211,6 @@ const TraineeForm: React.FC<TraineeFormProps> = ({ onClose, availableCentres = [
                 />
               </div>
 
-              <div>
-                <Label htmlFor="nin">NIN</Label>
-                <Input
-                  id="nin"
-                  value={formData.nin}
-                  onChange={(e) => handleChange('nin', e.target.value)}
-                  placeholder="Enter NIN"
-                  className="mt-1"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="phone_number">Phone Number</Label>
-                <Input
-                  id="phone_number"
-                  value={formData.phone_number}
-                  onChange={(e) => handleChange('phone_number', e.target.value)}
-                  placeholder="Enter phone number"
-                  className="mt-1"
-                />
-              </div>
 
               <div>
                 <Label htmlFor="email">Email</Label>

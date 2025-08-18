@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAppContext } from '@/contexts/AppContext';
 import { useToast } from '@/hooks/use-toast';
 import { X, BarChart3, Target, Calendar, Users, TrendingUp, FileText, Save, Building, Wifi, Zap, Droplets, Wind, Monitor, Upload, FileImage, Video, Trash2 } from 'lucide-react';
-import { uploadWeeklyReportFiles, uploadMEReportFiles } from '@/lib/googleDrive';
+
 
 interface CombinedReportsFormProps {
   onClose: () => void;
@@ -88,35 +88,7 @@ const CombinedReportsForm: React.FC<CombinedReportsFormProps> = ({ onClose }) =>
     setMonthlyFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const uploadWeeklyFilesToGoogleDrive = async () => {
-    if (weeklyFiles.length === 0) return [];
-    
-    setUploadingFiles(true);
-    try {
-      const results = await uploadWeeklyReportFiles(weeklyFiles, weeklyData.centre_name);
-      setUploadingFiles(false);
-      return results.filter(result => result.success).map(result => result.file);
-    } catch (error) {
-      setUploadingFiles(false);
-      toast({ title: 'Error', description: 'Failed to upload files', variant: 'destructive' });
-      return [];
-    }
-  };
 
-  const uploadMonthlyFilesToGoogleDrive = async () => {
-    if (monthlyFiles.length === 0) return [];
-    
-    setUploadingFiles(true);
-    try {
-      const results = await uploadMEReportFiles(monthlyFiles, monthlyData.centre_name);
-      setUploadingFiles(false);
-      return results.filter(result => result.success).map(result => result.file);
-    } catch (error) {
-      setUploadingFiles(false);
-      toast({ title: 'Error', description: 'Failed to upload files', variant: 'destructive' });
-      return [];
-    }
-  };
 
   const handleWeeklySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,9 +100,6 @@ const CombinedReportsForm: React.FC<CombinedReportsFormProps> = ({ onClose }) =>
 
     setLoading(true);
     try {
-      // Upload files to Google Drive first
-      const uploadedFileData = await uploadWeeklyFilesToGoogleDrive();
-      
       await addWeeklyReport({
         centre_name: weeklyData.centre_name,
         technical_manager_name: weeklyData.technical_manager_name,
@@ -141,7 +110,6 @@ const CombinedReportsForm: React.FC<CombinedReportsFormProps> = ({ onClose }) =>
         trainees_enrolled: parseInt(weeklyData.trainees_enrolled) || 0,
         trainees_completed: parseInt(weeklyData.trainees_completed) || 0,
         trainees_dropped: parseInt(weeklyData.trainees_dropped) || 0,
-        attached_files: uploadedFileData, // Add uploaded files data
       });
       toast({ title: 'Success', description: 'Weekly report submitted successfully!' });
       setWeeklyData({
@@ -172,9 +140,6 @@ const CombinedReportsForm: React.FC<CombinedReportsFormProps> = ({ onClose }) =>
 
     setLoading(true);
     try {
-      // Upload files to Google Drive first
-      const uploadedFileData = await uploadMonthlyFilesToGoogleDrive();
-      
       await addMEReport({
         centre_name: monthlyData.centre_name,
         technical_manager_name: monthlyData.technical_manager_name,
@@ -182,7 +147,6 @@ const CombinedReportsForm: React.FC<CombinedReportsFormProps> = ({ onClose }) =>
         year: parseInt(monthlyData.year),
         report_date: monthlyData.report_date,
         comments: monthlyData.comments,
-        attached_files: uploadedFileData, // Add uploaded files data
       });
       toast({ title: 'Success', description: 'Monthly report submitted successfully!' });
       setMonthlyData({

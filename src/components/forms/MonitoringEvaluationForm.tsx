@@ -63,7 +63,6 @@ const MonitoringEvaluationForm: React.FC<MonitoringEvaluationFormProps> = ({ onC
         next_quarter_goals: formData.next_quarter_goals,
         budget_utilization: parseFloat(formData.budget_utilization) || 0,
         community_impact: formData.community_impact,
-        attached_files: uploadedFileData,
       });
       toast({ title: 'Success', description: 'Monitoring & Evaluation report submitted successfully!' });
       onClose();

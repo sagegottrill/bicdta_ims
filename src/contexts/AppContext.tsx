@@ -1131,7 +1131,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Add weekly report to Supabase
-  const addWeeklyReport = async (report: Omit<WeeklyReport, 'id' | 'attached_files'>) => {
+  const addWeeklyReport = async (report: Omit<WeeklyReport, 'id'>) => {
     try {
       console.log('🚀 Adding weekly report to Supabase:', report);
       
@@ -1184,7 +1184,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Add M&E report to Supabase
-  const addMEReport = async (report: Omit<MEReport, 'id' | 'attached_files'>) => {
+  const addMEReport = async (report: Omit<MEReport, 'id'>) => {
     try {
       console.log('🚀 Adding M&E report to Supabase:', report);
       
