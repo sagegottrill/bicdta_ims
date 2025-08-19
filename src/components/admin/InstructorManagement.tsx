@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -49,17 +49,8 @@ const InstructorManagement: React.FC<InstructorManagementProps> = ({ currentUser
   const [rejectionReason, setRejectionReason] = useState('');
   const [instructorToReject, setInstructorToReject] = useState<any>(null);
 
-  const filteredInstructors = instructors?.filter(instructor => {
-    const matchesSearch = searchTerm === '' || 
-      instructor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      instructor.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      instructor.centre_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      instructor.lga.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesStatus = statusFilter === 'all' || instructor.status === statusFilter;
-
-    return matchesSearch && matchesStatus;
-  }) || [];
+  // Show all instructors, no filtering
+  const filteredInstructors = instructors || [];
 
   const handleEdit = (instructor: any) => {
     setEditingInstructor(instructor.id);

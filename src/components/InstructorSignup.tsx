@@ -13,7 +13,7 @@ interface InstructorSignupProps {
 }
 
 const InstructorSignup: React.FC<InstructorSignupProps> = ({ onBackToLogin }) => {
-  const { addInstructor } = useAppContext();
+  const { addInstructor, getAllCentres, getInstructorsByCentre } = useAppContext();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     lga: '',
@@ -33,8 +33,8 @@ const InstructorSignup: React.FC<InstructorSignupProps> = ({ onBackToLogin }) =>
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.lga || !formData.technical_manager_name || !formData.email || !formData.phone_number || !formData.password) {
-      toast({ title: 'Error', description: 'Please fill in all required fields', variant: 'destructive' });
+    if (!formData.lga || !formData.technical_manager_name || !formData.email || !formData.phone_number || !formData.password || !formData.centre_name) {
+      toast({ title: 'Error', description: 'Please fill in all required fields including centre name', variant: 'destructive' });
       return;
     }
 
@@ -50,6 +50,24 @@ const InstructorSignup: React.FC<InstructorSignupProps> = ({ onBackToLogin }) =>
 
     setLoading(true);
     try {
+      // Check if selected centre is valid
+      const centres = getAllCentres();
+      if (!centres.includes(formData.centre_name)) {
+        toast({ title: 'Error', description: 'Please select a valid centre', variant: 'destructive' });
+        return;
+      }
+
+      // Check if centre already has an instructor
+      const centreInstructors = getInstructorsByCentre(formData.centre_name);
+      if (centreInstructors.length > 0 && centreInstructors[0].status !== 'revoked') {
+        toast({ 
+          title: 'Error', 
+          description: `${formData.centre_name} already has an assigned instructor`, 
+          variant: 'destructive' 
+        });
+        return;
+      }
+
       // Create Firebase user account with the provided password
       const { signUpWithEmail } = await import('@/lib/firebase');
       await signUpWithEmail(formData.email, formData.password, {
@@ -201,14 +219,13 @@ const InstructorSignup: React.FC<InstructorSignupProps> = ({ onBackToLogin }) =>
                       <SelectValue placeholder="Select your centre" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="DIKWA DIGITAL LITERACY CENTRE">DIKWA DIGITAL LITERACY CENTRE</SelectItem>
-                      <SelectItem value="GAJIRAM ICT CENTER">GAJIRAM ICT CENTER</SelectItem>
-                      <SelectItem value="GUBIO DIGITAL LITERACY CENTRE">GUBIO DIGITAL LITERACY CENTRE</SelectItem>
-                      <SelectItem value="KAGA DIGITAL LITERACY CENTRE">KAGA DIGITAL LITERACY CENTRE</SelectItem>
-                      <SelectItem value="MONGUNO DIGITAL LITERACY CENTRE">MONGUNO DIGITAL LITERACY CENTRE</SelectItem>
                       <SelectItem value="MAFA DIGITAL LITERACY CENTRE">MAFA DIGITAL LITERACY CENTRE</SelectItem>
-                      <SelectItem value="DAMASAK DIGITAL LITERACY CENTER">DAMASAK DIGITAL LITERACY CENTER</SelectItem>
-                      <SelectItem value="BAYO DIGITAL LITERACY CENTER">BAYO DIGITAL LITERACY CENTER</SelectItem>
+                      <SelectItem value="MAGUMERI DIGITAL LITERACY CENTRE">MAGUMERI DIGITAL LITERACY CENTRE</SelectItem>
+                      <SelectItem value="KAGA DIGITAL LITERACY CENTRE">KAGA DIGITAL LITERACY CENTRE</SelectItem>
+                      <SelectItem value="GUBIO DIGITAL LITERACY CENTRE">GUBIO DIGITAL LITERACY CENTRE</SelectItem>
+                      <SelectItem value="GAJIRAM DIGITAL LITERACY CENTRE">GAJIRAM DIGITAL LITERACY CENTRE</SelectItem>
+                      <SelectItem value="DIKWA DIGITAL LITERACY CENTRE">DIKWA DIGITAL LITERACY CENTRE</SelectItem>
+                      <SelectItem value="BAYO DIGITAL LITERACY CENTRE">BAYO DIGITAL LITERACY CENTRE</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

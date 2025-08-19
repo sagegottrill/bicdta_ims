@@ -3,24 +3,45 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { useAppContext } from '@/contexts/AppContext';
 import { Edit, Trash2, Building, Users, TrendingUp, Target, Activity, MapPin, BarChart3, Award, CheckCircle, AlertTriangle, Globe, Clock, PieChart, Zap, Lightbulb, Rocket, Star, TrendingDown, ArrowUp, ArrowDown } from 'lucide-react';
 import CentreInfo from './CentreInfo';
+
+import { useAppContext, standardizeCentreName } from '@/contexts/AppContext';
+
+type CentreStats = {
+  name: string;
+  trainees: number;
+  maleCount: number;
+  femaleCount: number;
+  avgAge: number;
+  ageSum: number;
+  cohorts: Set<number>;
+  employedCount: number;
+  unemployedCount: number;
+  primaryCount: number;
+  secondaryCount: number;
+  tertiaryCount: number;
+  nilCount: number;
+  cohortCount?: number;
+  employmentRate?: number;
+  educationRate?: number;
+};
 
 const CentreAnalysis: React.FC<{ handleEdit?: (type: string, id: string) => void, handleDelete?: (type: string, id: string) => void }> = ({ handleEdit, handleDelete }) => {
   const { trainees, centres } = useAppContext();
 
-  // Calculate centre statistics from trainees data
+  // Calculate centre statistics from trainees data using fuzzy matching
   const centreStats = trainees.reduce((acc, trainee) => {
-    if (!acc[trainee.centre_name]) {
-      acc[trainee.centre_name] = {
-        name: trainee.centre_name,
+    const fuzzyCentre = standardizeCentreName(trainee.centre_name || '');
+    if (!acc[fuzzyCentre]) {
+      acc[fuzzyCentre] = {
+        name: fuzzyCentre,
         trainees: 0,
         maleCount: 0,
         femaleCount: 0,
         avgAge: 0,
         ageSum: 0,
-        cohorts: new Set(),
+        cohorts: new Set<number>(),
         employedCount: 0,
         unemployedCount: 0,
         primaryCount: 0,
@@ -29,40 +50,35 @@ const CentreAnalysis: React.FC<{ handleEdit?: (type: string, id: string) => void
         nilCount: 0
       };
     }
-    
-    acc[trainee.centre_name].trainees++;
-    acc[trainee.centre_name].ageSum += trainee.age;
-    acc[trainee.centre_name].cohorts.add(trainee.cohort_number);
-    
+    acc[fuzzyCentre].trainees++;
+    acc[fuzzyCentre].ageSum += trainee.age;
+    acc[fuzzyCentre].cohorts.add(trainee.cohort_number);
     if (trainee.gender?.toLowerCase() === 'male' || trainee.gender?.toLowerCase() === 'm') {
-      acc[trainee.centre_name].maleCount++;
+      acc[fuzzyCentre].maleCount++;
     } else if (trainee.gender?.toLowerCase() === 'female' || trainee.gender?.toLowerCase() === 'f') {
-      acc[trainee.centre_name].femaleCount++;
+      acc[fuzzyCentre].femaleCount++;
     }
-
     // Employment stats
     if (trainee.employment_status?.toLowerCase() === 'employed' || trainee.employment_status?.toLowerCase() === 'emp') {
-      acc[trainee.centre_name].employedCount++;
+      acc[fuzzyCentre].employedCount++;
     } else if (trainee.employment_status?.toLowerCase() === 'unemployed' || trainee.employment_status?.toLowerCase() === 'unemp') {
-      acc[trainee.centre_name].unemployedCount++;
+      acc[fuzzyCentre].unemployedCount++;
     }
-
     // Education stats
     if (trainee.educational_background?.toLowerCase().includes('primary')) {
-      acc[trainee.centre_name].primaryCount++;
+      acc[fuzzyCentre].primaryCount++;
     } else if (trainee.educational_background?.toLowerCase().includes('secondary') || trainee.educational_background?.toLowerCase().includes('ssce')) {
-      acc[trainee.centre_name].secondaryCount++;
+      acc[fuzzyCentre].secondaryCount++;
     } else if (trainee.educational_background?.toLowerCase().includes('tertiary') || trainee.educational_background?.toLowerCase().includes('ond') || trainee.educational_background?.toLowerCase().includes('bsc')) {
-      acc[trainee.centre_name].tertiaryCount++;
+      acc[fuzzyCentre].tertiaryCount++;
     } else if (trainee.educational_background?.toLowerCase() === 'nil' || trainee.educational_background?.toLowerCase() === 'none') {
-      acc[trainee.centre_name].nilCount++;
+      acc[fuzzyCentre].nilCount++;
     }
-    
     return acc;
-  }, {} as Record<string, any>);
+  }, {} as Record<string, CentreStats>);
 
   // Calculate averages and convert to array
-  const centreStatsArray = Object.values(centreStats).map(centre => ({
+  const centreStatsArray: CentreStats[] = Object.values(centreStats).map(centre => ({
     ...centre,
     avgAge: Math.round(centre.ageSum / centre.trainees),
     cohortCount: centre.cohorts.size,
@@ -71,7 +87,7 @@ const CentreAnalysis: React.FC<{ handleEdit?: (type: string, id: string) => void
   }));
 
   // Analytics calculations
-  const totalCentres = centres.length;
+  const totalCentres = centreStatsArray.length;
   const totalTrainees = centreStatsArray.reduce((sum, centre) => sum + centre.trainees, 0);
   const avgTraineesPerCentre = totalCentres > 0 ? Math.round(totalTrainees / totalCentres) : 0;
   const highUtilizationCentres = centreStatsArray.filter(centre => centre.trainees > 50).length;
@@ -290,7 +306,7 @@ const CentreAnalysis: React.FC<{ handleEdit?: (type: string, id: string) => void
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {centres
+              {centreStatsArray
                 .sort((a, b) => b.trainees - a.trainees)
                 .slice(0, 3)
                 .map((centre, index) => (
@@ -342,7 +358,7 @@ const CentreAnalysis: React.FC<{ handleEdit?: (type: string, id: string) => void
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {centres.map((centre, index) => {
+                {centreStatsArray.map((centre, index) => {
                   const utilization = centre.trainees > 50 ? 'High' : centre.trainees > 30 ? 'Medium' : 'Low';
                   const performance = getPerformanceTrend(centre);
                   return (
@@ -421,7 +437,7 @@ const CentreAnalysis: React.FC<{ handleEdit?: (type: string, id: string) => void
                     </TableRow>
                   );
                 })}
-                {centres.length === 0 && (
+                {centreStatsArray.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={9} className="text-center py-12 text-slate-500">
                       <div className="flex flex-col items-center gap-2">
@@ -450,7 +466,7 @@ const CentreAnalysis: React.FC<{ handleEdit?: (type: string, id: string) => void
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {centres.slice(0, 5).map((centre) => (
+              {centreStatsArray.slice(0, 5).map((centre) => (
                 <div key={centre.name} className="p-4 bg-gradient-to-r from-slate-50 to-emerald-50 rounded-lg border border-slate-200/50">
                   <div className="flex items-center justify-between mb-3">
                     <span className="font-medium text-slate-800">{centre.name?.toUpperCase()}</span>
@@ -487,7 +503,7 @@ const CentreAnalysis: React.FC<{ handleEdit?: (type: string, id: string) => void
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {centres.slice(0, 5).map((centre) => (
+              {centreStatsArray.slice(0, 5).map((centre) => (
                 <div key={centre.name} className="p-4 bg-gradient-to-r from-slate-50 to-blue-50 rounded-lg border border-slate-200/50">
                   <div className="flex items-center justify-between mb-3">
                     <span className="font-medium text-slate-800">{centre.name?.toUpperCase()}</span>

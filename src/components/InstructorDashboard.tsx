@@ -26,6 +26,7 @@ const InstructorDashboard: React.FC = () => {
       : 'all'
   );
   const [selectedCohort, setSelectedCohort] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Real-time Analytics
   const genderStats = [
@@ -53,7 +54,7 @@ const InstructorDashboard: React.FC = () => {
     return acc;
   }, {} as Record<string, number>) || {};
 
-  // Real-time filtered trainees based on instructor's center and selected filters
+  // Real-time filtered trainees based on instructor's center, selected filters, and search
   const filteredTrainees = trainees?.filter(trainee => {
     // First filter by instructor's center
     if (currentUser?.role === 'instructor' && currentUser.centre_name) {
@@ -61,11 +62,19 @@ const InstructorDashboard: React.FC = () => {
         return false;
       }
     }
-    
     // Then apply additional filters
     const centreMatch = selectedCentre === 'all' || trainee.centre_name?.toUpperCase() === selectedCentre;
     const cohortMatch = selectedCohort === 'all' || trainee.cohort_number?.toString() === selectedCohort;
-    return centreMatch && cohortMatch;
+    const searchMatch = searchTerm.trim() === '' || [
+      trainee.full_name?.toLowerCase(),
+      trainee.id_number?.toLowerCase(),
+      trainee.nin?.toLowerCase(),
+      trainee.phone_number?.toLowerCase(),
+      trainee.email?.toLowerCase(),
+      trainee.lga?.toLowerCase(),
+      trainee.centre_name?.toLowerCase()
+    ].some(field => field && field.includes(searchTerm.trim().toLowerCase()));
+    return centreMatch && cohortMatch && searchMatch;
   }) || [];
 
   // Get unique centres and cohorts for filter dropdowns
@@ -400,8 +409,14 @@ const InstructorDashboard: React.FC = () => {
                 <p className="text-slate-600 text-lg">Manage and monitor your digital literacy trainees</p>
               </div>
               <div className="flex gap-4">
-
-
+                <input
+          type="text"
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+          placeholder="Search trainees by name, ID, NIN, phone, email, LGA, centre..."
+          className="border border-blue-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          style={{ minWidth: '260px' }}
+        />
               </div>
             </div>
             
@@ -551,7 +566,7 @@ const InstructorDashboard: React.FC = () => {
                         )}
                       </div>
                     </td>
-                    <td className="py-4 px-6 text-slate-600">
+                    <td className="py-4 px-6">
                       {t.people_with_special_needs ? (
                         <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">PWD</span>
                       ) : (
@@ -577,7 +592,7 @@ const InstructorDashboard: React.FC = () => {
                 )}
                 {filteredTrainees.length === 0 && (
                   <tr>
-                    <td colSpan={18} className="text-center py-12 text-slate-500">
+                    <td colSpan={17} className="text-center py-12 text-slate-500">
                       <div className="flex flex-col items-center gap-2">
                         <Users className="w-8 h-8 text-slate-400" />
                         <p>No trainees found for selected filters</p>

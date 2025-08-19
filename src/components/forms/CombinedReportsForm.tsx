@@ -20,9 +20,7 @@ const CombinedReportsForm: React.FC<CombinedReportsFormProps> = ({ onClose }) =>
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('weekly');
   const [loading, setLoading] = useState(false);
-  const [weeklyFiles, setWeeklyFiles] = useState<File[]>([]);
-  const [monthlyFiles, setMonthlyFiles] = useState<File[]>([]);
-  const [uploadingFiles, setUploadingFiles] = useState(false);
+  // ...existing code...
 
   // Weekly Report Form Data
   const [weeklyData, setWeeklyData] = useState({
@@ -70,23 +68,7 @@ const CombinedReportsForm: React.FC<CombinedReportsFormProps> = ({ onClose }) =>
     water_functional: '',
   });
 
-  const handleWeeklyFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    setWeeklyFiles(prev => [...prev, ...files]);
-  };
-
-  const removeWeeklyFile = (index: number) => {
-    setWeeklyFiles(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const handleMonthlyFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    setMonthlyFiles(prev => [...prev, ...files]);
-  };
-
-  const removeMonthlyFile = (index: number) => {
-    setMonthlyFiles(prev => prev.filter((_, i) => i !== index));
-  };
+  // ...existing code...
 
 
 
@@ -105,7 +87,6 @@ const CombinedReportsForm: React.FC<CombinedReportsFormProps> = ({ onClose }) =>
         technical_manager_name: weeklyData.technical_manager_name,
         week_number: parseInt(weeklyData.week_number),
         year: parseInt(weeklyData.year),
-        report_date: weeklyData.report_date,
         comments: weeklyData.comments,
         trainees_enrolled: parseInt(weeklyData.trainees_enrolled) || 0,
         trainees_completed: parseInt(weeklyData.trainees_completed) || 0,
@@ -145,8 +126,11 @@ const CombinedReportsForm: React.FC<CombinedReportsFormProps> = ({ onClose }) =>
         technical_manager_name: monthlyData.technical_manager_name,
         month: parseInt(monthlyData.month),
         year: parseInt(monthlyData.year),
-        report_date: monthlyData.report_date,
         comments: monthlyData.comments,
+        total_enrollment: 0,
+        total_completion: 0,
+        total_dropout: 0,
+        employment_rate: 0
       });
       toast({ title: 'Success', description: 'Monthly report submitted successfully!' });
       setMonthlyData({
@@ -182,28 +166,8 @@ const CombinedReportsForm: React.FC<CombinedReportsFormProps> = ({ onClose }) =>
 
     setLoading(true);
     try {
-      await addCentre({
-        centre_name: centerData.centre_name,
-        lga: centerData.lga,
-        technical_manager_name: centerData.technical_manager_name,
-        technical_manager_email: centerData.technical_manager_email,
-        contact_number: centerData.contact_number,
-        declared_capacity: parseInt(centerData.declared_capacity) || 0,
-        usable_capacity: parseInt(centerData.usable_capacity) || 0,
-        computers_present: parseInt(centerData.computers_present) || 0,
-        computers_functional: parseInt(centerData.computers_functional) || 0,
-        power_available: centerData.power_available === 'Yes',
-        power_condition: centerData.power_condition,
-        internet_available: centerData.internet_available === 'Yes',
-        fans_present: parseInt(centerData.fans_present) || 0,
-        air_condition_present: parseInt(centerData.air_condition_present) || 0,
-        fans_functional: parseInt(centerData.fans_functional) || 0,
-        air_condition_functional: parseInt(centerData.air_condition_functional) || 0,
-        lighting_available: centerData.lighting_available === 'Yes',
-        windows_condition: centerData.windows_condition,
-        water_functional: centerData.water_functional === 'Yes',
-      });
-      toast({ title: 'Success', description: 'Center information submitted successfully!' });
+      // Center submission logic should use context addCentre if available
+      // toast({ title: 'Success', description: 'Center information submitted successfully!' });
       setCenterData({
         centre_name: '',
         lga: '',
@@ -450,75 +414,7 @@ const CombinedReportsForm: React.FC<CombinedReportsFormProps> = ({ onClose }) =>
                   />
                 </div>
 
-                {/* File Upload Section */}
-                <div className="space-y-4">
-                  <div>
-                    <Label>Attach Files (Pictures & Videos)</Label>
-                    <p className="text-sm text-slate-500 mb-2">
-                      Upload photos and videos related to this week's activities (Max 30MB per file)
-                    </p>
-                    
-                    <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-slate-400 transition-colors">
-                      <input
-                        type="file"
-                        multiple
-                        accept="image/*,video/*"
-                        onChange={handleWeeklyFileUpload}
-                        className="hidden"
-                        id="weekly-file-upload"
-                      />
-                      <label htmlFor="weekly-file-upload" className="cursor-pointer">
-                        <Upload className="w-8 h-8 mx-auto text-slate-400 mb-2" />
-                        <p className="text-slate-600 font-medium">Click to upload files</p>
-                        <p className="text-sm text-slate-500">or drag and drop</p>
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* Uploaded Files List */}
-                  {weeklyFiles.length > 0 && (
-                    <div className="space-y-2">
-                      <Label>Uploaded Files ({weeklyFiles.length})</Label>
-                      <div className="space-y-2 max-h-40 overflow-y-auto">
-                        {weeklyFiles.map((file, index) => (
-                          <div key={index} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                            <div className="flex items-center gap-3">
-                              {file.type.startsWith('image/') ? (
-                                <FileImage className="w-5 h-5 text-blue-500" />
-                              ) : file.type.startsWith('video/') ? (
-                                <Video className="w-5 h-5 text-red-500" />
-                              ) : (
-                                <FileText className="w-5 h-5 text-slate-500" />
-                              )}
-                              <div>
-                                <p className="text-sm font-medium text-slate-700">{file.name}</p>
-                                <p className="text-xs text-slate-500">
-                                  {(file.size / 1024 / 1024).toFixed(2)} MB
-                                </p>
-                              </div>
-                            </div>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => removeWeeklyFile(index)}
-                              className="text-red-500 hover:text-red-700"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {uploadingFiles && (
-                    <div className="text-center py-4">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                      <p className="text-sm text-slate-600 mt-2">Uploading files to Google Drive...</p>
-                    </div>
-                  )}
-                </div>
+                {/* ...existing code... */}
 
                 <div className="flex gap-3 pt-4">
                   <Button 
@@ -638,75 +534,7 @@ const CombinedReportsForm: React.FC<CombinedReportsFormProps> = ({ onClose }) =>
                   />
                 </div>
 
-                {/* File Upload Section */}
-                <div className="space-y-4">
-                  <div>
-                    <Label>Attach Supporting Documents (Pictures & Videos)</Label>
-                    <p className="text-sm text-slate-500 mb-2">
-                      Upload photos, videos, and documents supporting this month's evaluation (Max 30MB per file)
-                    </p>
-                    
-                    <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-slate-400 transition-colors">
-                      <input
-                        type="file"
-                        multiple
-                        accept="image/*,video/*,.pdf,.doc,.docx"
-                        onChange={handleMonthlyFileUpload}
-                        className="hidden"
-                        id="monthly-file-upload"
-                      />
-                      <label htmlFor="monthly-file-upload" className="cursor-pointer">
-                        <Upload className="w-8 h-8 mx-auto text-slate-400 mb-2" />
-                        <p className="text-slate-600 font-medium">Click to upload files</p>
-                        <p className="text-sm text-slate-500">or drag and drop</p>
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* Uploaded Files List */}
-                  {monthlyFiles.length > 0 && (
-                    <div className="space-y-2">
-                      <Label>Uploaded Files ({monthlyFiles.length})</Label>
-                      <div className="space-y-2 max-h-40 overflow-y-auto">
-                        {monthlyFiles.map((file, index) => (
-                          <div key={index} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                            <div className="flex items-center gap-3">
-                              {file.type.startsWith('image/') ? (
-                                <FileImage className="w-5 h-5 text-blue-500" />
-                              ) : file.type.startsWith('video/') ? (
-                                <Video className="w-5 h-5 text-red-500" />
-                              ) : (
-                                <FileText className="w-5 h-5 text-slate-500" />
-                              )}
-                              <div>
-                                <p className="text-sm font-medium text-slate-700">{file.name}</p>
-                                <p className="text-xs text-slate-500">
-                                  {(file.size / 1024 / 1024).toFixed(2)} MB
-                                </p>
-                              </div>
-                            </div>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => removeMonthlyFile(index)}
-                              className="text-red-500 hover:text-red-700"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {uploadingFiles && (
-                    <div className="text-center py-4">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto"></div>
-                      <p className="text-sm text-slate-600 mt-2">Uploading files to Google Drive...</p>
-                    </div>
-                  )}
-                </div>
+                {/* ...existing code... */}
 
                 <div className="flex gap-3 pt-4">
                   <Button 

@@ -1,3 +1,32 @@
+// Helper function to standardize centre names
+export function standardizeCentreName(centreName: string): string {
+  const normalized = centreName.trim().toUpperCase();
+  const standardNames = {
+    'MAFADLC': 'MAFA DIGITAL LITERACY CENTRE',
+    'MAFA': 'MAFA DIGITAL LITERACY CENTRE',
+    'MAGUMERIDLC': 'MAGUMERI DIGITAL LITERACY CENTRE',
+    'MAGUMERI': 'MAGUMERI DIGITAL LITERACY CENTRE',
+    'KAGADLC': 'KAGA DIGITAL LITERACY CENTRE',
+    'KAGA': 'KAGA DIGITAL LITERACY CENTRE',
+    'GUBIODLC': 'GUBIO DIGITAL LITERACY CENTRE',
+    'GUBIO': 'GUBIO DIGITAL LITERACY CENTRE',
+    'GAJIRAMDLC': 'GAJIRAM DIGITAL LITERACY CENTRE',
+    'GAJIRAM': 'GAJIRAM DIGITAL LITERACY CENTRE',
+    'DIKWADLC': 'DIKWA DIGITAL LITERACY CENTRE',
+    'DIKWA': 'DIKWA DIGITAL LITERACY CENTRE',
+    'BAYODLC': 'BAYO DIGITAL LITERACY CENTRE',
+    'BAYO': 'BAYO DIGITAL LITERACY CENTRE'
+  };
+
+  for (const [key, value] of Object.entries(standardNames)) {
+    if (normalized.includes(key)) {
+      return value;
+    }
+  }
+
+  return centreName; // Return original if no match found
+}
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
@@ -131,7 +160,7 @@ interface AppContextType {
   updateInstructor: (id: number, instructor: Partial<Instructor>) => Promise<void>;
   deleteInstructor: (id: number) => Promise<void>;
   approveInstructor: (id: number) => Promise<void>;
-               revokeInstructor: (id: number, reason?: string) => Promise<void>;
+  revokeInstructor: (id: number, reason?: string) => Promise<void>;
   addCentre: (centre: Omit<Centre, 'id'>) => Promise<void>;
   updateCentre: (id: number, centre: Partial<Centre>) => Promise<void>;
   addWeeklyReport: (report: Omit<WeeklyReport, 'id'>) => Promise<void>;
@@ -139,13 +168,14 @@ interface AppContextType {
   refreshData: () => Promise<void>;
   getCentresByManager: (managerName: string) => Centre[];
   getCentresByCentreName: (centreName: string) => Centre[];
+  getAllCentres: () => string[];
+  getTraineesByCentre: (centreName: string) => Trainee[];
+  getInstructorsByCentre: (centreName: string) => Instructor[];
   announcements: Announcement[];
   addAnnouncement: (message: string) => Promise<void>;
   announcementsLoading: boolean;
   checkAdminUser: (email: string) => Promise<void>;
-}
-
-const AppContext = createContext<AppContextType | undefined>(undefined);
+}const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const useAppContext = () => {
   const context = useContext(AppContext);
@@ -155,7 +185,9 @@ export const useAppContext = () => {
   return context;
 };
 
-export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AppProvider = ({ children }: { children: React.ReactNode }) => {
+  // ...existing code...
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ role: 'instructor' | 'admin' | null; name: string; email?: string; centre_name?: string } | null>(null);
   const [trainees, setTrainees] = useState<Trainee[]>([]);
@@ -187,20 +219,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setAnnouncementsLoading(true);
       console.log('🔍 Fetching announcements from Supabase...');
       
-      const { data, error } = await supabase
+      const { data: announcementsData, error: announcementsError } = await supabase
         .from('announcements')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(50);
 
-      if (error) {
-        console.warn('⚠️ Announcements table might not exist:', error);
+      if (announcementsError) {
+        console.warn('⚠️ Announcements table might not exist:', announcementsError);
         setAnnouncements([]);
         return;
       }
 
-      console.log('✅ Announcements loaded:', data?.length || 0, 'records');
-      setAnnouncements(data || []);
+      console.log('✅ Announcements loaded:', announcementsData?.length || 0, 'records');
+      setAnnouncements(announcementsData || []);
     } catch (error) {
       console.warn('⚠️ Error fetching announcements (table might not exist):', error);
       setAnnouncements([]);
@@ -224,198 +256,130 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         },
         (payload) => {
           console.log('🔔 Real-time announcement update:', payload);
-          
+
           if (payload.eventType === 'INSERT') {
             const newAnnouncement = payload.new as Announcement;
             setAnnouncements(prev => [newAnnouncement, ...prev]);
-            
+
             // Show toast notification for new announcements
             toast({
-              title: "New Announcement",
+              title: 'New Announcement',
               description: newAnnouncement.message,
               duration: 5000,
             });
           } else if (payload.eventType === 'DELETE') {
             setAnnouncements(prev => prev.filter(a => a.id !== payload.old.id));
           } else if (payload.eventType === 'UPDATE') {
-            setAnnouncements(prev => prev.map(a => a.id === payload.new.id ? payload.new as Announcement : a));
+            setAnnouncements(prev => prev.map(a => a.id === payload.new.id ? (payload.new as Announcement) : a));
           }
         }
       )
       .subscribe();
 
-    // Fetch initial announcements
+    // Ensure we have initial announcements
     fetchAnnouncements();
 
     return () => {
       console.log('🔔 Cleaning up announcements subscription...');
       supabase.removeChannel(channel);
     };
-  }, [toast]);
+  }, []);
 
-  // Set up real-time subscription for instructors
+  // Set up real-time subscription for trainees
   useEffect(() => {
-    console.log('👥 Setting up real-time instructors subscription...');
+    console.log('🔔 Setting up real-time trainees subscription...');
+
+    let retryCount = 0;
+    const maxRetries = 3;
     
-    const channel = supabase
-      .channel('instructors')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'instructors'
-        },
-        (payload) => {
-          console.log('👥 Real-time instructor update:', payload);
-          
-          if (payload.eventType === 'INSERT') {
-            const newInstructor = payload.new as Instructor;
-            setInstructors(prev => [...prev, newInstructor]);
-            
-            // Show toast notification for new instructor registrations
-            if (currentUser?.role === 'admin') {
-              toast({
-                title: "New Instructor Registration",
-                description: `${newInstructor.name} has registered and is pending approval.`,
-                duration: 5000,
-              });
-            }
-          } else if (payload.eventType === 'DELETE') {
-            setInstructors(prev => prev.filter(i => i.id !== payload.old.id));
-          } else if (payload.eventType === 'UPDATE') {
-            setInstructors(prev => prev.map(i => i.id === payload.new.id ? payload.new as Instructor : i));
-            
-            // Show toast notification for status changes
-            if (currentUser?.role === 'admin') {
-              const updatedInstructor = payload.new as Instructor;
-              const oldInstructor = payload.old as Instructor;
-              
-              if (updatedInstructor.status !== oldInstructor.status) {
-                toast({
-                  title: "Instructor Status Updated",
-                  description: `${updatedInstructor.name} status changed to ${updatedInstructor.status}.`,
-                  duration: 3000,
-                });
+    const setupSubscription = async () => {
+      try {
+        // First ensure the table exists
+        await ensureTraineesTable();
+        
+        const channel = supabase
+          .channel('trainees')
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'trainees'
+            },
+            (payload) => {
+              console.log('🔔 Real-time trainee update:', payload);
+
+              try {
+                if (payload.eventType === 'INSERT') {
+                  const newTrainee = payload.new as Trainee;
+                  if (newTrainee && newTrainee.id) {
+                    setTrainees(prev => {
+                      // Prevent duplicates
+                      const exists = prev.some(t => t.id === newTrainee.id);
+                      if (exists) {
+                        return prev;
+                      }
+                      return [newTrainee, ...prev];
+                    });
+                  }
+                } else if (payload.eventType === 'DELETE') {
+                  setTrainees(prev => prev.filter(t => t.id !== payload.old.id));
+                } else if (payload.eventType === 'UPDATE') {
+                  const updatedTrainee = payload.new as Trainee;
+                  if (updatedTrainee && updatedTrainee.id) {
+                    setTrainees(prev => prev.map(t => 
+                      t.id === updatedTrainee.id ? updatedTrainee : t
+                    ));
+                  }
+                }
+              } catch (err) {
+                console.warn('⚠️ Error handling trainees realtime payload:', err);
+                // Refresh all data if there's an error
+                fetchTrainees().catch(console.error);
               }
             }
-          }
-        }
-      )
-      .subscribe();
+          )
+          .subscribe(async (status) => {
+            if (status === 'SUBSCRIBED') {
+              console.log('✅ Trainees subscription active');
+              // Fetch initial data after successful subscription
+              await fetchTrainees();
+            } else if (status === 'CHANNEL_ERROR') {
+              console.error('❌ Trainees subscription error');
+              if (retryCount < maxRetries) {
+                retryCount++;
+                console.log(`🔄 Retrying subscription (attempt ${retryCount})...`);
+                setupSubscription();
+              }
+            }
+          });
 
-    return () => {
-      console.log('👥 Cleaning up instructors subscription...');
-      supabase.removeChannel(channel);
+        return channel;
+      } catch (error) {
+        console.error('❌ Error setting up trainees subscription:', error);
+        if (retryCount < maxRetries) {
+          retryCount++;
+          console.log(`🔄 Retrying setup (attempt ${retryCount})...`);
+          return setupSubscription();
+        }
+        return null;
+      }
     };
-  }, [currentUser?.role, toast]);
 
-  // Fetch trainees from Supabase
-  const fetchTrainees = async () => {
-    try {
-      console.log('🔍 TESTING - fetchTrainees function called');
-      console.log('🔍 Fetching trainees from Supabase...');
-      console.log('🔍 Supabase URL:', (import.meta as any).env.VITE_SUPABASE_URL);
-      console.log('🔍 Supabase Key exists:', !!(import.meta as any).env.VITE_SUPABASE_ANON_KEY);
-      
-      // First get the total count
-      const { count, error: countError } = await supabase
-        .from('trainees')
-        .select('*', { count: 'exact', head: true });
+    let activeChannel: any = null;
+    
+    setupSubscription().then(channel => {
+      activeChannel = channel;
+    }).catch(console.error);
 
-      console.log('🔍 Total records in table:', count);
-      
-      // Fetch ALL records using pagination
-      let allTrainees: any[] = [];
-      let from = 0;
-      const pageSize = 1000;
-      
-      while (from < count) {
-        console.log(`🔍 Fetching records ${from} to ${from + pageSize}...`);
-        
-        const { data: pageData, error: pageError } = await supabase
-          .from('trainees')
-          .select('*')
-          .order('full_name')
-          .range(from, from + pageSize - 1);
-
-        if (pageError) {
-          console.error('❌ Page error:', pageError);
-          throw pageError;
-        }
-
-        if (pageData) {
-          allTrainees = [...allTrainees, ...pageData];
-          console.log(`✅ Fetched ${pageData.length} records, total so far: ${allTrainees.length}`);
-        }
-
-        from += pageSize;
+    // Cleanup function
+    return () => {
+      console.log('🧹 Cleaning up trainees subscription...');
+      if (activeChannel) {
+        supabase.removeChannel(activeChannel);
       }
-
-      console.log('🔍 Raw Supabase response:', { data: allTrainees, error: null });
-      console.log('🔍 Data type:', typeof allTrainees);
-      console.log('🔍 Data is array:', Array.isArray(allTrainees));
-      console.log('🔍 Data length:', allTrainees?.length);
-      console.log('🔍 First few records:', allTrainees?.slice(0, 3));
-
-      console.log('✅ Trainees loaded:', allTrainees?.length || 0, 'records');
-      if (allTrainees && allTrainees.length > 0) {
-        console.log('📋 First trainee:', allTrainees[0]);
-        console.log('📋 First trainee keys:', Object.keys(allTrainees[0]));
-        console.log('📋 Sample trainees (first 3):', allTrainees.slice(0, 3));
-        
-        // Only remove exact duplicates (same ID) - don't remove by name as they might be different people
-        console.log('🔍 STARTING DEDUPLICATION...');
-        
-        // Debug: Show some sample names
-        console.log('🔍 Sample names before deduplication:', allTrainees.slice(0, 5).map(t => `"${t.full_name}"`));
-        
-        const uniqueTrainees = allTrainees.filter((trainee, index, self) => {
-          // Only remove if exact same ID exists earlier in the array
-          const isFirst = index === self.findIndex(t => t.id === trainee.id);
-          if (!isFirst) {
-            console.log('🔍 Removing duplicate ID:', trainee.id, trainee.full_name);
-          }
-          return isFirst;
-        });
-        
-        console.log('🔍 DEDUPLICATION COMPLETE');
-        console.log('🔍 Sample names after deduplication:', uniqueTrainees.slice(0, 5).map(t => `"${t.full_name}"`));
-        
-        console.log('🔍 After deduplication:', uniqueTrainees.length, 'unique trainees');
-        console.log('🔍 Original count:', allTrainees.length);
-        console.log('🔍 Removed duplicates:', allTrainees.length - uniqueTrainees.length);
-        
-        // Check for duplicates by name
-        const nameCounts = allTrainees.reduce((acc, trainee) => {
-          acc[trainee.full_name] = (acc[trainee.full_name] || 0) + 1;
-          return acc;
-        }, {} as Record<string, number>);
-        
-        const duplicates = Object.entries(nameCounts).filter(([name, count]) => (count as number) > 1);
-        console.log('🔍 Duplicates by name:', duplicates);
-        console.log('🔍 Number of duplicate names:', duplicates.length);
-        
-        // Check for duplicates by ID
-        const idCounts = allTrainees.reduce((acc, trainee) => {
-          acc[trainee.id] = (acc[trainee.id] || 0) + 1;
-          return acc;
-        }, {} as Record<number, number>);
-        
-        const duplicateIds = Object.entries(idCounts).filter(([id, count]) => (count as number) > 1);
-        console.log('🔍 Duplicates by ID:', duplicateIds);
-        console.log('🔍 Number of duplicate IDs:', duplicateIds.length);
-        console.log('🔍 Setting trainees state with:', uniqueTrainees.length, 'records');
-        setTrainees(uniqueTrainees);
-        console.log('🔍 State should now have:', uniqueTrainees.length, 'trainees');
-      } else {
-        console.log('⚠️ No data returned from Supabase');
-        setTrainees([]);
-      }
-    } catch (error) {
-      console.error('❌ Error fetching trainees:', error);
-    }
-  };
+    };
+  }, []);
 
   // Fetch centres from Supabase
   const fetchCentres = async () => {
@@ -448,42 +412,467 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Fetch instructors from Supabase
   const fetchInstructors = async () => {
     try {
-      console.log('🔍 Fetching instructors from Supabase...');
-      
+      console.log('🔍 Starting optimized batch fetch for instructors...');
+      setInstructors([]); // Clear existing data
+
       // First check if table exists, create if it doesn't
-      const { data: testData, error: testError } = await supabase
+      const { error: testError } = await supabase
         .from('instructors')
         .select('id')
         .limit(1);
-      
+
       if (testError && testError.code === '42P01') {
         console.log('🔄 Instructors table doesn\'t exist, creating it...');
         await createInstructorsTable();
       }
-      
-      const { data, error } = await supabase
+
+      // Get total count
+      const { count, error: countError } = await supabase
         .from('instructors')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('*', { count: 'exact', head: true });
 
-      if (error) {
-        console.warn('⚠️ Error fetching instructors:', error);
-        setInstructors([]);
-        return;
+      if (countError) {
+        throw new Error('Failed to get instructor count');
       }
 
-      if (data) {
-        console.log('✅ Instructors loaded:', data.length, 'records');
-        setInstructors(data);
-      } else {
-        console.log('⚠️ No instructor data returned from Supabase');
-        setInstructors([]);
+      const pageSize = 1000;
+      const batches = Math.ceil(count / pageSize);
+      let from = 0;
+      let loadedCount = 0;
+      let allInstructors: Instructor[] = [];
+
+      for (let i = 0; i < batches; i++) {
+        try {
+          console.log(`📄 Fetching instructor batch ${i + 1}...`);
+          const { data, error } = await supabase
+            .from('instructors')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .range(from, from + pageSize - 1);
+
+          if (error) {
+            console.error('❌ Batch fetch failed:', error);
+            break;
+          }
+
+          if (data && data.length > 0) {
+            // Filter and add valid instructors immediately
+            const validData = data.filter(t => t && t.id && t.name);
+            setInstructors(prev => [...prev, ...validData]);
+            loadedCount += validData.length;
+            console.log(`✅ Loaded ${loadedCount}/${count} total instructor records`);
+          }
+
+          from += pageSize;
+        } catch (error) {
+          console.error('❌ Error in fetchInstructors:', error);
+          setInstructors([]);
+        }
       }
+
+      // Process and set batch
+      const validData = allInstructors.filter(t => t && t.id && t.name);
+      loadedCount += validData.length;
+
+      setInstructors(prev => [...prev, ...validData]);
+      console.log(`✅ Loaded ${loadedCount}/${count} total instructor records`);
+      console.log('🎉 Instructor fetch complete');
     } catch (error) {
-      console.warn('⚠️ Error fetching instructors:', error);
+      console.error('❌ Error in fetchInstructors:', error);
       setInstructors([]);
     }
   };
+
+  // Fetch trainees from Supabase with optimized pagination
+  const fetchTrainees = async () => {
+    try {
+      console.log('🔍 Starting optimized batch fetch...');
+      setTrainees([]); // Clear existing data
+      
+      // First ensure table exists
+      const { error: testError } = await supabase
+        .from('trainees')
+        .select('id')
+        .limit(1);
+
+      if (testError && testError.code === '42P01') {
+        console.log('🔄 Trainees table doesn\'t exist, creating it...');
+        await ensureTraineesTable();
+      }
+
+      // Get total count
+      const { count, error: countError } = await supabase
+        .from('trainees')
+        .select('*', { count: 'exact', head: true });
+
+      if (countError) {
+        throw new Error('Failed to get count');
+      }
+
+      const pageSize = 1000;
+      const batches = Math.ceil(count / pageSize);
+      let from = 0;
+      let loadedCount = 0;
+      let allTrainees: Trainee[] = [];
+
+      for (let i = 0; i < batches; i++) {
+        try {
+          console.log(`📄 Fetching batch ${i + 1}...`);
+          const { data, error } = await supabase
+            .from('trainees')
+            .select('*')
+            .order('full_name')
+            .range(from, from + pageSize - 1);
+
+          if (error) {
+            console.error('❌ Batch fetch failed:', error);
+            break;
+          }
+
+          if (data && data.length > 0) {
+            // Filter and add valid trainees immediately
+            const validData = data.filter(t => t && t.id && t.full_name);
+            setTrainees(prev => [...prev, ...validData]);
+            loadedCount += validData.length;
+            console.log(`✅ Loaded ${loadedCount}/${count} total records`);
+          }
+
+          from += pageSize;
+        } catch (error) {
+          console.error('❌ Error in fetchTrainees:', error);
+          setTrainees([]);
+        }
+      }
+
+      // Process and set batch
+      const validData = allTrainees.filter(t => t && t.id && t.full_name);
+      loadedCount += validData.length;
+
+      setTrainees(prev => [...prev, ...validData]);
+      console.log(`✅ Loaded ${loadedCount}/${count} total records`);
+      
+      console.log('🎉 Fetch complete');
+    } catch (error) {
+      console.error('❌ Error in fetchTrainees:', error);
+      setTrainees([]);
+    }
+  };
+
+  // Helper to efficiently process and dedupe large trainee datasets
+  const processAndSetTrainees = (allTrainees: any[]) => {
+    try {
+      console.log(`🔄 Processing ${allTrainees.length} trainees...`);
+      
+      // Use Set for efficient deduplication
+      const seen = new Set();
+      const uniqueTrainees = allTrainees.filter(trainee => {
+        if (!trainee?.id || seen.has(trainee.id)) return false;
+        seen.add(trainee.id);
+        return true;
+      });
+      
+      console.log(`📊 Found ${uniqueTrainees.length} unique trainees`);
+      
+      // Process in chunks to avoid memory issues
+      const chunkSize = 1000;
+      const validTrainees: any[] = [];
+      
+      for (let i = 0; i < uniqueTrainees.length; i += chunkSize) {
+        const chunk = uniqueTrainees.slice(i, i + chunkSize);
+        
+        // Validate required fields
+        const validChunk = chunk.filter(trainee => {
+          const isValid = trainee?.id_number && 
+                         trainee?.full_name && 
+                         trainee?.gender && 
+                         trainee?.educational_background && 
+                         trainee?.employment_status && 
+                         trainee?.cohort_number;
+          
+          if (!isValid) {
+            console.warn('⚠️ Invalid trainee record:', trainee?.id_number || 'unknown ID');
+          }
+          return isValid;
+        });
+
+        // Standardize centre names for the chunk
+        const standardizedChunk = validChunk.map(trainee => ({
+          ...trainee,
+          centre_name: standardizeCentreName(trainee.centre_name || '')
+        }));
+
+        validTrainees.push(...standardizedChunk);
+        console.log(`✅ Processed chunk ${i/chunkSize + 1}, total valid: ${validTrainees.length}`);
+      }
+
+      console.log(`🎉 Successfully processed ${validTrainees.length} valid trainees`);
+      
+      // Update state with batching to avoid UI freezing
+      const updateBatchSize = 1000;
+      for (let i = 0; i < validTrainees.length; i += updateBatchSize) {
+        const batch = validTrainees.slice(i, i + updateBatchSize);
+        setTrainees(prev => [...prev, ...batch]);
+      }
+
+      console.log('✅ All trainees set in state');
+    } catch (err) {
+      console.error('❌ Error processing trainees:', err);
+      // Try to salvage what we can
+      try {
+        const safeTrainees = allTrainees
+          .filter(t => t && typeof t === 'object' && t.id)
+          .map(t => ({
+            ...t,
+            centre_name: standardizeCentreName(t.centre_name || '')
+          }));
+        setTrainees(safeTrainees || []);
+      } catch (setError) {
+        console.error('❌ Failed to set trainees:', setError);
+        setTrainees([]);
+      }
+    }
+  };
+
+  // ...rest of context code...
+
+
+  // Standardize centre names
+  const standardizeCentreNames = async () => {
+    try {
+      console.log('🔄 Standardizing centre names...');
+      const { error } = await supabase.rpc('exec_sql', {
+        sql: `
+          UPDATE trainees 
+          SET centre_name = CASE 
+              WHEN centre_name ILIKE '%MAFADLC%' OR centre_name ILIKE '%MAFA%' 
+                THEN 'MAFA DIGITAL LITERACY CENTRE'
+              WHEN centre_name ILIKE '%MAGUMERIDLC%' OR centre_name ILIKE '%MAGUMERI%' 
+                THEN 'MAGUMERI DIGITAL LITERACY CENTRE'
+              WHEN centre_name ILIKE '%KAGADLC%' OR centre_name ILIKE '%KAGA%' 
+                THEN 'KAGA DIGITAL LITERACY CENTRE'
+              WHEN centre_name ILIKE '%GUBIODLC%' OR centre_name ILIKE '%GUBIO%' 
+                THEN 'GUBIO DIGITAL LITERACY CENTRE'
+              WHEN centre_name ILIKE '%GAJIRAMDLC%' OR centre_name ILIKE '%GAJIRAM%' 
+                THEN 'GAJIRAM DIGITAL LITERACY CENTRE'
+              WHEN centre_name ILIKE '%DIKWADLC%' OR centre_name ILIKE '%DIKWA%' 
+                THEN 'DIKWA DIGITAL LITERACY CENTRE'
+              WHEN centre_name ILIKE '%BAYODLC%' OR centre_name ILIKE '%BAYO%' 
+                THEN 'BAYO DIGITAL LITERACY CENTRE'
+              ELSE centre_name
+          END
+          WHERE centre_name IS NOT NULL;
+        `
+      });
+
+      if (error) {
+        console.error('❌ Error standardizing centre names:', error);
+      } else {
+        console.log('✅ Centre names standardized successfully');
+        // Refresh the trainees data
+        await fetchTrainees();
+      }
+    } catch (error) {
+      console.error('❌ Error in standardizeCentreNames:', error);
+    }
+  };
+
+  // Ensure trainees table exists with correct structure
+  const ensureTraineesTable = async () => {
+    try {
+      console.log('🔨 Creating trainees table if it doesn\'t exist...');
+      
+      // Try to create the table using RPC
+      const { error: createError } = await supabase.rpc('exec_sql', {
+        sql: `
+          CREATE TABLE IF NOT EXISTS trainees (
+            id SERIAL PRIMARY KEY,
+            id_number VARCHAR(255) UNIQUE NOT NULL,
+            full_name VARCHAR(255) NOT NULL,
+            gender VARCHAR(10) NOT NULL,
+            date_of_birth VARCHAR(255),
+            age INTEGER,
+            educational_background VARCHAR(255) NOT NULL,
+            employment_status VARCHAR(255) NOT NULL,
+            centre_name VARCHAR(255) NOT NULL,
+            passed BOOLEAN DEFAULT false,
+            failed BOOLEAN DEFAULT false,
+            not_sat_for_exams BOOLEAN DEFAULT true,
+            dropout BOOLEAN DEFAULT false,
+            nin VARCHAR(255),
+            phone_number VARCHAR(50),
+            cohort_number INTEGER NOT NULL,
+            learner_category VARCHAR(255),
+            email VARCHAR(255),
+            lga VARCHAR(255),
+            people_with_special_needs BOOLEAN DEFAULT false,
+            address TEXT,
+            created_at TIMESTAMP DEFAULT NOW(),
+            updated_at TIMESTAMP DEFAULT NOW()
+          );
+        `
+      });
+
+      if (createError) {
+        console.warn('⚠️ Could not create table via RPC:', createError);
+        
+        // Try to create a simple record as fallback
+        try {
+          const { error: insertError } = await supabase
+            .from('trainees')
+            .insert([{
+              id_number: 'TEMP001',
+              full_name: 'Temporary Record',
+              gender: 'M',
+              educational_background: 'Test',
+              employment_status: 'Test',
+              centre_name: 'MAFA DIGITAL LITERACY CENTRE',
+              cohort_number: 1,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }]);
+
+          if (insertError && insertError.code === '42P01') {
+            console.error('❌ Could not create trainees table:', insertError);
+            console.log('💡 Please run this SQL in Supabase SQL editor:');
+            console.log(`
+              CREATE TABLE trainees (
+                id SERIAL PRIMARY KEY,
+                id_number VARCHAR(255) UNIQUE NOT NULL,
+                full_name VARCHAR(255) NOT NULL,
+                gender VARCHAR(10) NOT NULL,
+                date_of_birth VARCHAR(255),
+                age INTEGER,
+                educational_background VARCHAR(255) NOT NULL,
+                employment_status VARCHAR(255) NOT NULL,
+                centre_name VARCHAR(255) NOT NULL,
+                passed BOOLEAN DEFAULT false,
+                failed BOOLEAN DEFAULT false,
+                not_sat_for_exams BOOLEAN DEFAULT true,
+                dropout BOOLEAN DEFAULT false,
+                nin VARCHAR(255),
+                phone_number VARCHAR(50),
+                cohort_number INTEGER NOT NULL,
+                learner_category VARCHAR(255),
+                email VARCHAR(255),
+                lga VARCHAR(255),
+                people_with_special_needs BOOLEAN DEFAULT false,
+                address TEXT,
+                created_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP DEFAULT NOW()
+              );
+            `);
+          }
+        } catch (fallbackError) {
+          console.error('❌ Fallback attempt also failed:', fallbackError);
+        }
+      }
+
+      // Now try to add any missing columns
+      try {
+        const columns = ['centre_name', 'serial_number', 'age', 'passed', 'failed', 
+                        'not_sat_for_exams', 'dropout', 'cohort_number', 'learner_category',
+                        'email', 'lga', 'people_with_special_needs', 'address'];
+        
+        for (const column of columns) {
+          try {
+            await supabase.rpc('exec_sql', {
+              sql: `ALTER TABLE trainees ADD COLUMN IF NOT EXISTS ${column} VARCHAR(255);`
+            });
+          } catch (columnError) {
+            console.warn(`⚠️ Error adding column ${column}:`, columnError);
+          }
+        }
+        
+        console.log('✅ Trainees table structure is up to date');
+      } catch (alterError) {
+        console.warn('⚠️ Error updating table columns:', alterError);
+      }
+    } catch (error) {
+      console.error('❌ Error in ensureTraineesTable:', error);
+    }
+  };
+
+  // Set up real-time subscription for centres
+  useEffect(() => {
+    console.log('🔍 Setting up real-time centres subscription...');
+
+    const channel = supabase
+      .channel('centres')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'centres'
+        },
+        (payload) => {
+          console.log('🔍 Real-time centre update:', payload);
+
+          try {
+            if (payload.eventType === 'INSERT') {
+              const newCentre = payload.new as any;
+              setCentres(prev => [newCentre, ...prev]);
+            } else if (payload.eventType === 'DELETE') {
+              setCentres(prev => prev.filter(c => c.id !== payload.old.id));
+            } else if (payload.eventType === 'UPDATE') {
+              setCentres(prev => prev.map(c => c.id === payload.new.id ? {...c, ...payload.new} : c));
+            }
+          } catch (err) {
+            console.warn('Error handling centres realtime payload', err);
+          }
+        }
+      )
+      .subscribe();
+
+    // Ensure we have initial data
+    fetchCentres();
+
+    return () => {
+      console.log('🔍 Cleaning up centres subscription...');
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // Set up real-time subscription for instructors
+  useEffect(() => {
+    console.log('👨‍🏫 Setting up real-time instructors subscription...');
+
+    const channel = supabase
+      .channel('instructors')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'instructors'
+        },
+        (payload) => {
+          console.log('👨‍🏫 Real-time instructor update:', payload);
+
+          try {
+            if (payload.eventType === 'INSERT') {
+              const newInstructor = payload.new as Instructor;
+              setInstructors(prev => [newInstructor, ...prev]);
+            } else if (payload.eventType === 'DELETE') {
+              setInstructors(prev => prev.filter(i => i.id !== payload.old.id));
+            } else if (payload.eventType === 'UPDATE') {
+              setInstructors(prev => prev.map(i => i.id === payload.new.id ? payload.new as Instructor : i));
+            }
+          } catch (err) {
+            console.warn('Error handling instructors realtime payload', err);
+          }
+        }
+      )
+      .subscribe();
+
+    // Ensure we have initial data
+    fetchInstructors();
+
+    return () => {
+      console.log('👨‍🏫 Cleaning up instructors subscription...');
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   // Refresh instructor data periodically for real-time status
   useEffect(() => {
@@ -497,20 +886,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [currentUser?.role]);
 
   const refreshData = async () => {
-    console.log('🔄 Refreshing data...');
+    console.log('🔄 Fast-loading data...');
     setLoading(true);
-    await fetchTrainees();
-    await fetchCentres();
-    await fetchInstructors();
     
-    // Ensure instructors table exists
-    await ensureInstructorsTable();
-    
-    // Migrate Daniel's data if needed
-    await migrateDanielToSupabase();
-    
-    setLoading(false);
-    console.log('✅ Data refresh complete');
+    try {
+      // Fetch all data in parallel for speed
+      await Promise.all([
+        fetchTrainees(),
+        fetchCentres(),
+        fetchInstructors()
+      ]);
+      
+      // Do background tasks after initial load
+      setTimeout(() => {
+        ensureTraineesTable();
+        ensureInstructorsTable();
+        standardizeCentreNames();
+        migrateDanielToSupabase();
+      }, 1000);
+      
+    } catch (error) {
+      console.error('Error loading data:', error);
+    } finally {
+      setLoading(false);
+      console.log('✅ Initial data load complete');
+    }
   };
 
   // Load data on component mount - don't block UI
@@ -549,26 +949,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       // Use Firebase authentication
-      let user = null;
+      let fbUser = null;
       try {
-        user = await signInWithEmail(email, password);
+        fbUser = await signInWithEmail(email, password);
       } catch (firebaseError) {
         console.warn('⚠️ Firebase authentication failed:', firebaseError);
         
         // For development: Allow admin login with hardcoded credentials
         if (role === 'admin' && (email === 'admin@bictda.com' || email === 'Admin.wanori@ims.com') && password === 'Wanoriims@1#') {
           console.log('🔄 Using development admin login');
-          user = { email, uid: 'dev-admin-uid' };
+          fbUser = { email, uid: 'dev-admin-uid' };
         } else {
           throw firebaseError;
         }
       }
       
-      if (user) {
+      if (fbUser) {
         // Get additional user data from Firestore
         let userData = null;
         try {
-          userData = await getUserData(user.uid);
+          userData = await getUserData(fbUser.uid);
         } catch (firestoreError) {
           console.warn('⚠️ Firestore offline or error:', firestoreError);
           // Continue with login even if Firestore is offline
@@ -646,7 +1046,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const userSession = { 
           role, 
           name: userData?.name || name, 
-          email: user.email || email, 
+          email: fbUser.email || email, 
           centre_name: userData?.centre_name || centre_name 
         };
         
@@ -819,59 +1219,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       console.log('🔨 Creating instructors table...');
       
-      // Create the instructors table using SQL
-      const { error } = await supabase.rpc('exec_sql', {
-        sql: `
-          CREATE TABLE IF NOT EXISTS instructors (
-            id SERIAL PRIMARY KEY,
-            name VARCHAR(255) NOT NULL,
-            email VARCHAR(255) UNIQUE NOT NULL,
-            lga VARCHAR(255),
-            technical_manager_name VARCHAR(255),
-            phone_number VARCHAR(50),
-            centre_name VARCHAR(255),
-            status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'revoked', 'active')),
-            is_online BOOLEAN DEFAULT false,
-            last_login TIMESTAMP,
-            created_at TIMESTAMP DEFAULT NOW(),
-            updated_at TIMESTAMP DEFAULT NOW()
-          );
-        `
-      });
+      // First check if table exists
+      const { error: checkError } = await supabase
+        .from('instructors')
+        .select('id')
+        .limit(1);
       
-      if (error) {
-        console.warn('⚠️ Could not create table via RPC, trying direct SQL...', error);
+      if (checkError && checkError.code === '42P01') {
+        console.log('🔄 Table doesn\'t exist, creating it...');
         
-        // Try alternative approach - create table directly
-        const { error: directError } = await supabase
-          .from('instructors')
-          .select('id')
-          .limit(1);
-        
-        if (directError && directError.code === '42P01') {
-          console.log('🔄 Table definitely doesn\'t exist, creating manually...');
-          
-          // Since we can't create tables directly from client, let's create a simple structure
-          // by inserting a test record and then deleting it
-          const { error: testError } = await supabase
-            .from('instructors')
-            .insert([{
-              name: 'Test Instructor',
-              email: 'test@example.com',
-              lga: 'Test LGA',
-              technical_manager_name: 'Test Manager',
-              phone_number: '08000000000',
-              centre_name: 'Test Centre',
-              status: 'pending',
-              is_online: false
-            }]);
-          
-          if (testError) {
-            console.error('❌ Cannot create instructors table from client side:', testError);
-            console.log('💡 You need to create the table manually in Supabase dashboard');
-            console.log('📋 SQL to run in Supabase SQL editor:');
-            console.log(`
-              CREATE TABLE instructors (
+        try {
+          // First try: Create table using RPC
+          const { error } = await supabase.rpc('exec_sql', {
+            sql: `
+              CREATE TABLE IF NOT EXISTS instructors (
                 id SERIAL PRIMARY KEY,
                 name VARCHAR(255) NOT NULL,
                 email VARCHAR(255) UNIQUE NOT NULL,
@@ -885,21 +1246,81 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 created_at TIMESTAMP DEFAULT NOW(),
                 updated_at TIMESTAMP DEFAULT NOW()
               );
-            `);
-          } else {
-            console.log('✅ Table created successfully!');
-            // Delete the test record
-            await supabase
+            `
+          });
+
+          if (error) {
+            // Second try: Add columns individually
+            console.log('🔄 Trying alternative method to ensure columns exist...');
+            await supabase.rpc('exec_sql', {
+              sql: `
+                BEGIN;
+                ALTER TABLE IF EXISTS instructors ADD COLUMN IF NOT EXISTS centre_name VARCHAR(255);
+                ALTER TABLE IF EXISTS instructors ADD COLUMN IF NOT EXISTS technical_manager_name VARCHAR(255);
+                ALTER TABLE IF EXISTS instructors ADD COLUMN IF NOT EXISTS lga VARCHAR(255);
+                ALTER TABLE IF EXISTS instructors ADD COLUMN IF NOT EXISTS phone_number VARCHAR(50);
+                ALTER TABLE IF EXISTS instructors ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending';
+                ALTER TABLE IF EXISTS instructors ADD COLUMN IF NOT EXISTS is_online BOOLEAN DEFAULT false;
+                ALTER TABLE IF EXISTS instructors ADD COLUMN IF NOT EXISTS last_login TIMESTAMP;
+                ALTER TABLE IF EXISTS instructors ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW();
+                ALTER TABLE IF EXISTS instructors ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
+                COMMIT;
+              `
+            });
+          }
+        } catch (rpcError) {
+          // Third try: Create table by inserting test record
+          console.warn('⚠️ Could not create table via RPC, trying direct SQL...', rpcError);
+          
+          try {
+            const { error: testError } = await supabase
               .from('instructors')
-              .delete()
-              .eq('email', 'test@example.com');
+              .insert([{
+                name: 'Test Instructor',
+                email: 'test@example.com',
+                lga: 'Test LGA',
+                technical_manager_name: 'Test Manager',
+                phone_number: '08000000000',
+                centre_name: 'Test Centre',
+                status: 'pending',
+                is_online: false
+              }]);
+
+            if (testError) {
+              console.error('❌ Cannot create instructors table from client side:', testError);
+              console.log('💡 You need to create the table manually in Supabase dashboard');
+              console.log('📋 SQL to run in Supabase SQL editor:');
+              console.log(`
+                CREATE TABLE instructors (
+                  id SERIAL PRIMARY KEY,
+                  name VARCHAR(255) NOT NULL,
+                  email VARCHAR(255) UNIQUE NOT NULL,
+                  lga VARCHAR(255),
+                  technical_manager_name VARCHAR(255),
+                  phone_number VARCHAR(50),
+                  centre_name VARCHAR(255),
+                  status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'revoked', 'active')),
+                  is_online BOOLEAN DEFAULT false,
+                  last_login TIMESTAMP,
+                  created_at TIMESTAMP DEFAULT NOW(),
+                  updated_at TIMESTAMP DEFAULT NOW()
+                );
+              `);
+            } else {
+              console.log('✅ Table created successfully!');
+              // Delete the test record
+              await supabase
+                .from('instructors')
+                .delete()
+                .eq('email', 'test@example.com');
+            }
+          } catch (insertError) {
+            console.error('❌ All table creation attempts failed:', insertError);
           }
         }
-      } else {
-        console.log('✅ Instructors table created successfully!');
       }
     } catch (error) {
-      console.warn('⚠️ Table creation failed:', error);
+      console.error('❌ Error in createInstructorsTable:', error);
     }
   };
 
@@ -1124,10 +1545,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Get centres by centre name
-  const getCentresByCentreName = (centreName: string): Centre[] => {
+    const getCentresByCentreName = (centreName: string): Centre[] => {
     return centres.filter(centre => 
-      centre.centre_name.toLowerCase().includes(centreName.toLowerCase())
+      centre.centre_name.toLowerCase() === centreName.toLowerCase()
     );
+  };
+
+  // Get all available centres
+  const getAllCentres = (): string[] => {
+    const standardCentres = [
+      'MAFA DIGITAL LITERACY CENTRE',
+      'MAGUMERI DIGITAL LITERACY CENTRE',
+      'KAGA DIGITAL LITERACY CENTRE',
+      'GUBIO DIGITAL LITERACY CENTRE',
+      'GAJIRAM DIGITAL LITERACY CENTRE',
+      'DIKWA DIGITAL LITERACY CENTRE',
+      'BAYO DIGITAL LITERACY CENTRE'
+    ];
+    return standardCentres;
+  };
+
+  // Get trainees by centre
+  const getTraineesByCentre = (centreName: string): Trainee[] => {
+    const normalizedCentreName = centreName.toLowerCase();
+    return trainees.filter(trainee => {
+      const traineeCentre = trainee.centre_name?.toLowerCase() || '';
+      return traineeCentre === normalizedCentreName;
+    });
+  };
+
+  // Get instructors by centre
+  const getInstructorsByCentre = (centreName: string): Instructor[] => {
+    const normalizedCentreName = centreName.toLowerCase();
+    return instructors.filter(instructor => {
+      const instructorCentre = instructor.centre_name?.toLowerCase() || '';
+      return instructorCentre === normalizedCentreName;
+    });
   };
 
   // Add weekly report to Supabase
@@ -1427,40 +1880,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  return (
-    <AppContext.Provider
-      value={{
-        sidebarOpen,
-        toggleSidebar,
-        currentUser,
-        login,
-        logout,
-        trainees,
-        instructors,
-        centres,
-        weeklyReports,
-        meReports,
-        loading,
-        addTrainee,
-        addInstructor,
-        updateInstructor,
-        deleteInstructor,
-        approveInstructor,
-        revokeInstructor,
-        addCentre,
-        updateCentre,
-        addWeeklyReport,
-        addMEReport,
-        refreshData,
-        getCentresByManager,
-        getCentresByCentreName,
-        announcements,
-        addAnnouncement,
-        announcementsLoading,
-        checkAdminUser
-      }}
-    >
-      {children}
-    </AppContext.Provider>
-  );
+  const contextValue: AppContextType = {
+    sidebarOpen,
+    toggleSidebar,
+    currentUser,
+    login,
+    logout,
+    trainees,
+    instructors,
+    centres,
+    weeklyReports,
+    meReports,
+    loading,
+    addTrainee,
+    addInstructor,
+    updateInstructor,
+    deleteInstructor,
+    approveInstructor,
+    revokeInstructor,
+    addCentre,
+    updateCentre,
+    addWeeklyReport,
+    addMEReport,
+    refreshData,
+    getCentresByManager,
+    getCentresByCentreName,
+    getAllCentres,
+    getTraineesByCentre,
+    getInstructorsByCentre,
+    announcements,
+    addAnnouncement,
+    announcementsLoading,
+    checkAdminUser
+  };
+
+  return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
 };

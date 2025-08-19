@@ -19,7 +19,6 @@ const TraineeForm: React.FC<TraineeFormProps> = ({ onClose, availableCentres = [
   const { addTrainee } = useAppContext();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
-    serial_number: '',
     id_number: '',
     full_name: '',
     gender: '',
@@ -36,7 +35,6 @@ const TraineeForm: React.FC<TraineeFormProps> = ({ onClose, availableCentres = [
     email: '',
     lga: '',
     people_with_special_needs: false,
-    address: '',
   });
   const [loading, setLoading] = useState(false);
 
@@ -53,7 +51,6 @@ const TraineeForm: React.FC<TraineeFormProps> = ({ onClose, availableCentres = [
         centre_name: formData.centre_name?.toUpperCase(),
         age: parseInt(formData.age) || 0,
         cohort_number: parseInt(formData.cohort_number) || 1,
-        serial_number: parseInt(formData.serial_number) || 0,
       });
       toast({ title: 'Success', description: 'Trainee enrolled successfully!' });
       onClose();
@@ -80,16 +77,6 @@ const TraineeForm: React.FC<TraineeFormProps> = ({ onClose, availableCentres = [
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="serial_number">Serial Number</Label>
-                <Input
-                  id="serial_number"
-                  value={formData.serial_number}
-                  onChange={(e) => handleChange('serial_number', e.target.value)}
-                  placeholder="Enter serial number"
-                  className="mt-1"
-                />
-              </div>
               
               <div>
                 <Label htmlFor="id_number">ID Number *</Label>
@@ -260,18 +247,6 @@ const TraineeForm: React.FC<TraineeFormProps> = ({ onClose, availableCentres = [
                 onCheckedChange={(checked) => handleChange('people_with_special_needs', checked)}
               />
               <Label htmlFor="people_with_special_needs">People with Special Needs</Label>
-            </div>
-
-            <div>
-              <Label htmlFor="address">Address</Label>
-              <Textarea
-                id="address"
-                value={formData.address}
-                onChange={(e) => handleChange('address', e.target.value)}
-                placeholder="Enter full address"
-                className="mt-1"
-                rows={3}
-              />
             </div>
 
             <div className="flex justify-end gap-3 pt-4">

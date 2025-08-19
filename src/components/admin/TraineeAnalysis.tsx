@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
+// import { standardizeCentreNames } from '@/contexts/AppContext'; // Uncomment if available
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useAppContext } from '@/contexts/AppContext';
+import { Input } from '@/components/ui/input';
+import { useAppContext, standardizeCentreName } from '@/contexts/AppContext';
 import { Edit, Trash2, Download, Users, GraduationCap, Building, Target, TrendingUp, Filter, Search, BarChart3, Activity } from 'lucide-react';
 import ExportModal from '../ExportModal';
 
@@ -12,6 +14,7 @@ const TraineeAnalysis: React.FC<{ handleEdit?: (type: string, id: string) => voi
   const { trainees } = useAppContext();
   const [selectedCentre, setSelectedCentre] = useState<string>('all');
   const [selectedCohort, setSelectedCohort] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Analytics calculations
   const totalTrainees = trainees.length;
@@ -32,24 +35,24 @@ const TraineeAnalysis: React.FC<{ handleEdit?: (type: string, id: string) => voi
     { status: 'Unemployed', count: unemployedCount },
   ];
 
-  // Get unique centres and cohorts for filter dropdowns
-  const uniqueCentres = [
-          "DIKWA DIGITAL LITERACY CENTRE",
-    "GAJIRAM ICT CENTER", 
-    "GUBIO DIGITAL LITERACY CENTRE",
-    "KAGA DIGITAL LITERACY CENTRE",
-    "MONGUNO DIGITAL LITERACY CENTRE",
-    "MAFA DIGITAL LITERACY CENTRE",
-    "DAMASAK DIGITAL LITERACY CENTER",
-    "BAYO DIGITAL LITERACY CENTER"
-  ];
+  // Get unique centres from trainees using fuzzy matching
+  const uniqueCentres = Array.from(new Set(trainees.map(t => standardizeCentreName(t.centre_name || '')))).filter(c => c).sort();
   const uniqueCohorts = [...new Set(trainees.map(t => t.cohort_number?.toString() || ''))].filter(cohort => cohort && cohort !== '0').sort();
 
-  // Filtered trainees based on selected filters
+  // Filtered trainees based on selected filters and search, using fuzzy centre matching
   const filteredTrainees = trainees.filter(trainee => {
-    const centreMatch = selectedCentre === 'all' || trainee.centre_name?.toUpperCase() === selectedCentre;
-    const cohortMatch = selectedCohort === 'all' || trainee.cohort_number.toString() === selectedCohort;
-    return centreMatch && cohortMatch;
+    const centreMatch = selectedCentre === 'all' || standardizeCentreName(trainee.centre_name || '') === selectedCentre;
+    const cohortMatch = selectedCohort === 'all' || trainee.cohort_number?.toString() === selectedCohort;
+    const searchMatch = searchTerm.trim() === '' || [
+      trainee.full_name?.toLowerCase(),
+      trainee.id_number?.toLowerCase(),
+      trainee.nin?.toLowerCase(),
+      trainee.phone_number?.toLowerCase(),
+      trainee.email?.toLowerCase(),
+      trainee.lga?.toLowerCase(),
+      trainee.centre_name?.toLowerCase()
+    ].some(field => field && field.includes(searchTerm.trim().toLowerCase()));
+    return centreMatch && cohortMatch && searchMatch;
   });
 
   return (
@@ -132,7 +135,7 @@ const TraineeAnalysis: React.FC<{ handleEdit?: (type: string, id: string) => voi
         </Card>
       </div>
 
-      {/* Advanced Filter Controls */}
+      {/* Advanced Filter Controls + Search Bar */}
       <Card className="border-0 shadow-xl bg-gradient-to-r from-slate-50 to-blue-50">
         <CardHeader className="flex flex-row items-center gap-4 pb-4">
           <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center">
@@ -144,7 +147,7 @@ const TraineeAnalysis: React.FC<{ handleEdit?: (type: string, id: string) => voi
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-700">Training Centre</label>
               <Select value={selectedCentre} onValueChange={setSelectedCentre}>
@@ -159,7 +162,6 @@ const TraineeAnalysis: React.FC<{ handleEdit?: (type: string, id: string) => voi
                 </SelectContent>
               </Select>
             </div>
-            
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-700">Cohort</label>
               <Select value={selectedCohort} onValueChange={setSelectedCohort}>
@@ -174,12 +176,32 @@ const TraineeAnalysis: React.FC<{ handleEdit?: (type: string, id: string) => voi
                 </SelectContent>
               </Select>
             </div>
-
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">Search Trainees</label>
+              <Input
+                type="text"
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                placeholder="Search by name, ID, NIN, phone, email, LGA, centre..."
+                className="mt-1"
+              />
+            </div>
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-700">Results Summary</label>
               <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
-                <p className="text-blue-800 font-semibold">{filteredTrainees.length} Trainees Found</p>
-                <p className="text-blue-600 text-sm">Based on selected filters</p>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-blue-800 font-semibold">{filteredTrainees.length} Trainees Found</p>
+                    <p className="text-blue-600 text-sm">Based on selected filters & search</p>
+                  </div>
+                  <Button
+                    disabled
+                    className="bg-blue-300 text-white text-xs cursor-not-allowed"
+                  >
+                    <Building className="w-3 h-3 mr-1" />
+                    Standardize Centre Names (Unavailable)
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
@@ -219,7 +241,7 @@ const TraineeAnalysis: React.FC<{ handleEdit?: (type: string, id: string) => voi
             <Table>
               <TableHeader>
                 <TableRow className="bg-gradient-to-r from-slate-50 to-blue-50 text-slate-800">
-                  <TableHead className="py-4 px-6 text-left font-semibold">S/N</TableHead>
+                  {/* <TableHead className="py-4 px-6 text-left font-semibold">S/N</TableHead> */}
                   <TableHead className="py-4 px-6 text-left font-semibold">ID Number</TableHead>
                   <TableHead className="py-4 px-6 text-left font-semibold">Full Name</TableHead>
                   <TableHead className="py-4 px-6 text-left font-semibold">Gender</TableHead>
@@ -241,7 +263,7 @@ const TraineeAnalysis: React.FC<{ handleEdit?: (type: string, id: string) => voi
               <TableBody>
                 {filteredTrainees.map((trainee, index) => (
                   <TableRow key={trainee.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
-                    <TableCell className="py-4 px-6 text-slate-600">{trainee.serial_number || index + 1}</TableCell>
+                    {/* <TableCell className="py-4 px-6 text-slate-600">{trainee.serial_number || index + 1}</TableCell> */}
                     <TableCell className="py-4 px-6 font-medium text-slate-800">{trainee.id_number}</TableCell>
                     <TableCell className="py-4 px-6 font-medium text-slate-800">{trainee.full_name}</TableCell>
                     <TableCell className="py-4 px-6 text-slate-600">
