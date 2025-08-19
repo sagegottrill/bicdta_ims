@@ -11,7 +11,6 @@ import { useAppContext } from '@/contexts/AppContext';
 import { useToast } from '@/hooks/use-toast';
 import { 
   Users, 
-  Search, 
   Edit, 
   Save, 
   X, 
@@ -39,8 +38,6 @@ interface InstructorManagementProps {
 const InstructorManagement: React.FC<InstructorManagementProps> = ({ currentUser }) => {
   const { instructors, updateInstructor, deleteInstructor, approveInstructor, revokeInstructor } = useAppContext();
   const { toast } = useToast();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'revoked' | 'active'>('all');
   const [editingInstructor, setEditingInstructor] = useState<number | null>(null);
   const [editData, setEditData] = useState<any>({});
   const [selectedInstructor, setSelectedInstructor] = useState<any>(null);
@@ -49,7 +46,7 @@ const InstructorManagement: React.FC<InstructorManagementProps> = ({ currentUser
   const [rejectionReason, setRejectionReason] = useState('');
   const [instructorToReject, setInstructorToReject] = useState<any>(null);
 
-  // Show all instructors, no filtering
+  // Show all instructors, no filtering - display everything
   const filteredInstructors = instructors || [];
 
   const handleEdit = (instructor: any) => {
@@ -65,7 +62,7 @@ const InstructorManagement: React.FC<InstructorManagementProps> = ({ currentUser
   };
 
   const handleSave = async (id: number) => {
-    try {
+    try { 
       await updateInstructor(id, {
         name: editData.name,
         email: editData.email,
@@ -264,39 +261,6 @@ const InstructorManagement: React.FC<InstructorManagementProps> = ({ currentUser
           </CardContent>
         </Card>
       </div>
-
-      {/* Search and Filter */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
-                <Input
-                  placeholder="Search instructors by name, email, center, or LGA..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-            <div className="w-full md:w-48">
-              <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="revoked">Revoked</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-             </Card>
 
        {/* Selected Instructor Statistics */}
        {selectedInstructor && (
@@ -512,10 +476,7 @@ const InstructorManagement: React.FC<InstructorManagementProps> = ({ currentUser
             <Users className="w-12 h-12 text-slate-400 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-slate-600 mb-2">No Instructors Found</h3>
             <p className="text-slate-500">
-              {searchTerm || statusFilter !== 'all'
-                ? `No instructors match your search criteria`
-                : 'No instructors have been registered yet.'
-              }
+              No instructors have been registered yet.
             </p>
           </CardContent>
         </Card>
